@@ -19,6 +19,22 @@ export class Env {
     return this.configService.get<string>('BREVO_API_KEY') || '';
   }
 
+  get emailHost(): string {
+    return this.configService.get<string>('EMAIL_HOST') || 'smtp-relay.brevo.com';
+  }
+
+  get emailPort(): number {
+    return this.configService.get<number>('EMAIL_PORT') || 587;
+  }
+
+  get emailUser(): string {
+    return this.configService.get<string>('EMAIL_USER') || '';
+  }
+
+  get emailPassword(): string {
+    return this.configService.get<string>('EMAIL_PASSWORD') || '';
+  }
+
   get emailSenderAddress(): string {
     return this.configService.get<string>('EMAIL_SENDER_ADDRESS') || 'no-reply@recliq.com';
   }

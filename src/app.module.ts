@@ -1,9 +1,31 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { CoreConfigModule } from './core/config/config.module';
 import { DatabaseModule } from './core/database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { WalletModule } from './modules/wallet/wallet.module';
+import { RewardsModule } from './modules/rewards/rewards.module';
+import { RequestLoggingMiddleware } from './shared/middleware/request-logging.middleware';
 
 @Module({
-  imports: [CoreConfigModule, DatabaseModule, AuthModule],
+  imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
+    CoreConfigModule,
+    DatabaseModule,
+    AuthModule,
+    NotificationsModule,
+    WalletModule,
+    RewardsModule,
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RequestLoggingMiddleware)
+      .forRoutes('*');
+  }
+}

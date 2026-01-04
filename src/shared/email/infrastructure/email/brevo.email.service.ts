@@ -10,6 +10,18 @@ export class BrevoEmailService {
     const apiKey = this.env.brevoApiKey;
     const sender = this.env.emailSenderAddress;
 
+    // If no API key is configured, log the OTP for development
+    if (!apiKey || apiKey === 'your_brevo_api_key_here') {
+      console.log('==========================================');
+      console.log('🔔 EMAIL SERVICE - DEVELOPMENT MODE');
+      console.log('==========================================');
+      console.log(`To: ${to}`);
+      console.log(`Subject: Your Recliq OTP Code`);
+      console.log(`OTP: ${otp}`);
+      console.log('==========================================');
+      return;
+    }
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">

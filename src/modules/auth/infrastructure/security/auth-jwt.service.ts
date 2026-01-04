@@ -12,7 +12,7 @@ export class AuthJwtService {
   generateAccessToken(payload: any): string {
     return this.nestJwtService.sign(payload, {
       secret: this.env.jwtAccessSecret,
-      expiresIn: '15m',
+      expiresIn: '7d',
     });
   }
 
