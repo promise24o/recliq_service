@@ -7,6 +7,7 @@ import { Badge, UserBadge } from '../../domain/entities/badge.entity';
 import { EnvironmentalImpact } from '../../domain/entities/environmental-impact.entity';
 import { Challenge, UserChallengeProgress } from '../../domain/entities/challenge.entity';
 import { ReferralReward, ReferralStatus } from '../../domain/entities/referral-reward.entity';
+import { RewardActivity, RewardActivityType } from '../../domain/entities/reward-activity.entity';
 import type {
   IRewardPointsRepository,
   IRewardLedgerRepository,
@@ -17,6 +18,7 @@ import type {
   IChallengeRepository,
   IUserChallengeProgressRepository,
   IReferralRewardRepository,
+  IRewardActivityRepository,
 } from '../../domain/repositories/reward.repository';
 
 // Event interfaces for different reward triggers
@@ -73,6 +75,8 @@ export class RewardEngineService {
     private readonly userChallengeProgressRepository: IUserChallengeProgressRepository,
     @Inject('IReferralRewardRepository')
     private readonly referralRewardRepository: IReferralRewardRepository,
+    @Inject('IRewardActivityRepository')
+    private readonly rewardActivityRepository: IRewardActivityRepository,
   ) {}
 
   // Main event handlers
@@ -121,8 +125,20 @@ export class RewardEngineService {
       await this.rewardLedgerRepository.create(ledgerEntry);
 
       // Update reward points
+      const previousLevel = rewardPoints.currentLevel;
       rewardPoints.addPoints(points);
+      const newLevel = rewardPoints.currentLevel;
       await this.rewardPointsRepository.save(rewardPoints);
+
+      // Check for level up
+      if (newLevel > previousLevel) {
+        const levelUpActivity = RewardActivity.levelUp(
+          event.userId,
+          newLevel,
+          100 // Bonus points for leveling up
+        );
+        await this.rewardActivityRepository.create(levelUpActivity);
+      }
 
       // Update environmental impact
       await this.updateEnvironmentalImpact(event.userId, event.weight, event.materialType);
@@ -135,6 +151,25 @@ export class RewardEngineService {
 
       // Check for new badges
       await this.evaluateBadges(event.userId, ledgerEntry.id);
+
+      // Record activity
+      if (isFirstRecycle) {
+        const activity = RewardActivity.create({
+          userId: event.userId,
+          type: RewardActivityType.RECYCLING,
+          description: 'First recycling completed',
+          points: this.POINT_RULES.FIRST_RECYCLE,
+          metadata: { pickupId: event.pickupId, weight: event.weight, isFirstRecycle: true },
+        });
+        await this.rewardActivityRepository.create(activity);
+      } else {
+        const activity = RewardActivity.recyclingMilestone(
+          event.userId,
+          event.weight,
+          points
+        );
+        await this.rewardActivityRepository.create(activity);
+      }
 
       this.logger.log(`Successfully processed pickup completed for user ${event.userId}, awarded ${points} points`);
 
@@ -186,7 +221,15 @@ export class RewardEngineService {
       // Check for new badges
       await this.evaluateBadges(event.referrerUserId, ledgerEntry.id);
 
-      this.logger.log(`Successfully processed referral completed for user ${event.referrerUserId}`);
+      // Record activity
+      const activity = RewardActivity.referralCompleted(
+        event.referrerUserId,
+        event.referredUserId,
+        this.POINT_RULES.SUCCESSFUL_REFERRAL
+      );
+      await this.rewardActivityRepository.create(activity);
+
+      this.logger.log(`Successfully processed referral completed for referrer ${event.referrerUserId}, awarded ${this.POINT_RULES.SUCCESSFUL_REFERRAL} points`);
 
     } catch (error) {
       this.logger.error(`Error processing referral completed: ${error.message}`);
@@ -247,7 +290,15 @@ export class RewardEngineService {
       // Check for new badges
       await this.evaluateBadges(event.userId, ledgerEntry.id);
 
-      this.logger.log(`Successfully processed challenge completed for user ${event.userId}`);
+      // Record activity
+      const activity = RewardActivity.challengeCompleted(
+        event.userId,
+        challenge.title,
+        challenge.rewardPoints
+      );
+      await this.rewardActivityRepository.create(activity);
+
+      this.logger.log(`Successfully processed challenge completed for user ${event.userId}, awarded ${challenge.rewardPoints} points`);
 
     } catch (error) {
       this.logger.error(`Error processing challenge completed: ${error.message}`);
@@ -263,8 +314,29 @@ export class RewardEngineService {
       impact = await this.environmentalImpactRepository.create(userId);
     }
 
+    const previousTotalWeight = impact.totalKgRecycled;
     impact.addRecycledWeight(weight, materialType);
     await this.environmentalImpactRepository.save(impact);
+
+    // Check for milestones (every 50kg)
+    const milestone = Math.floor(impact.totalKgRecycled / 50);
+    const previousMilestone = Math.floor(previousTotalWeight / 50);
+    
+    if (milestone > previousMilestone) {
+      const activity = RewardActivity.create({
+        userId,
+        type: RewardActivityType.RECYCLING,
+        description: `Environmental milestone: ${milestone * 50}kg recycled`,
+        points: milestone * 10, // Bonus points for milestones
+        metadata: { 
+          totalWeight: impact.totalKgRecycled,
+          milestone: milestone * 50,
+          weightIncrement: weight,
+          materialType
+        },
+      });
+      await this.rewardActivityRepository.create(activity);
+    }
   }
 
   private async updateStreak(userId: string, recycleDate: Date): Promise<void> {
@@ -302,6 +374,34 @@ export class RewardEngineService {
         if (rewardPoints) {
           rewardPoints.addPoints(this.POINT_RULES.WEEKLY_STREAK);
           await this.rewardPointsRepository.save(rewardPoints);
+        }
+
+        // Record activity
+        const activity = RewardActivity.streakMaintained(
+          userId,
+          streak.currentStreakCount,
+          this.POINT_RULES.WEEKLY_STREAK
+        );
+        await this.rewardActivityRepository.create(activity);
+
+        // Check for streak milestones (every 4 weeks)
+        if (streak.currentStreakCount > 0 && streak.currentStreakCount % 4 === 0) {
+          const milestoneKey = `streak_milestone_${streak.currentStreakCount}`;
+          const existingMilestone = await this.rewardLedgerRepository.findByReferenceId(milestoneKey);
+          
+          if (!existingMilestone) {
+            const milestoneActivity = RewardActivity.create({
+              userId,
+              type: RewardActivityType.STREAK,
+              description: `Streak milestone: ${streak.currentStreakCount} weeks!`,
+              points: streak.currentStreakCount * 10, // Bonus points for milestones
+              metadata: { 
+                streakWeeks: streak.currentStreakCount,
+                milestone: streak.currentStreakCount
+              },
+            });
+            await this.rewardActivityRepository.create(milestoneActivity);
+          }
         }
       }
     }
@@ -378,6 +478,14 @@ export class RewardEngineService {
           rewardPoints.addPoints(this.POINT_RULES.BADGE_EARNED);
           await this.rewardPointsRepository.save(rewardPoints);
         }
+
+        // Record activity
+        const activity = RewardActivity.badgeEarned(
+          userId,
+          badge.name,
+          this.POINT_RULES.BADGE_EARNED
+        );
+        await this.rewardActivityRepository.create(activity);
 
         this.logger.log(`User ${userId} earned badge: ${badge.name}`);
       }

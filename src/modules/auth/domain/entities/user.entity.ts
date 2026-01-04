@@ -1,4 +1,5 @@
 import { UserRole } from '../../../../shared/constants/roles';
+import { AdminSubRole } from '../../../../shared/constants/admin-sub-roles';
 import { Email } from '../value-objects/email.vo';
 import { Phone } from '../value-objects/phone.vo';
 
@@ -9,6 +10,7 @@ export class User {
     public email?: Email,
     public phone?: Phone,
     public role: UserRole = UserRole.USER,
+    public adminSubRole?: AdminSubRole,
     public isVerified: boolean = false,
     public password?: string,
     public pin?: string,

@@ -98,6 +98,7 @@ export class UserSeedingService {
         user.email,
         user.phone,
         user.role,
+        undefined, // adminSubRole (only for admin users)
         user.isVerified,
         user.password,
         user.pin,

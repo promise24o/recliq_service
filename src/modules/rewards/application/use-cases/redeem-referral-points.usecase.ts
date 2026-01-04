@@ -1,8 +1,9 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { IReferralRewardRepository } from '../../domain/repositories/reward.repository';
+import type { IReferralRewardRepository, IRewardActivityRepository } from '../../domain/repositories/reward.repository';
 import type { IWalletRepository } from '../../../wallet/domain/repositories/wallet.repository';
 import { ReferralReward } from '../../domain/entities/referral-reward.entity';
 import { Wallet } from '../../../wallet/domain/entities/wallet.entity';
+import { RewardActivity, RewardActivityType } from '../../domain/entities/reward-activity.entity';
 
 export interface RedeemReferralPointsInput {
   userId: string;
@@ -29,6 +30,8 @@ export class RedeemReferralPointsUseCase {
     private readonly referralRewardRepository: IReferralRewardRepository,
     @Inject('IWalletRepository')
     private readonly walletRepository: IWalletRepository,
+    @Inject('IRewardActivityRepository')
+    private readonly rewardActivityRepository: IRewardActivityRepository,
   ) {}
 
   async execute(input: RedeemReferralPointsInput): Promise<RedeemReferralPointsOutput> {
@@ -88,6 +91,20 @@ export class RedeemReferralPointsUseCase {
         amount: referral.pointsAwarded * this.REDEMPTION_MULTIPLIER,
       });
     }
+
+    // Record redemption activity
+    const activity = RewardActivity.create({
+      userId,
+      type: RewardActivityType.REFERRAL,
+      description: `Referral points redeemed (${referralsToRedeem.length} referrals)`,
+      points: amountCredited,
+      metadata: { 
+        referralIds: referralsToRedeem.map(r => r.id),
+        totalPointsRedeemed,
+        amountCredited
+      },
+    });
+    await this.rewardActivityRepository.create(activity);
 
     return {
       redeemedCount: referralsToRedeem.length,

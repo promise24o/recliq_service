@@ -30,8 +30,9 @@ export class WalletRepositoryImpl implements IWalletRepository {
   async update(wallet: Wallet): Promise<void> {
     const doc = this.toDocument(wallet);
     await this.walletModel.updateOne(
-      { _id: wallet.id },
-      doc
+      { userId: wallet.userId },
+      doc,
+      { upsert: true }
     );
   }
 
@@ -57,6 +58,10 @@ export class WalletRepositoryImpl implements IWalletRepository {
       doc.balance,
       doc.totalEarnings,
       doc.todayEarnings,
+      doc.accountNumber,
+      doc.accountName,
+      doc.lastWithdrawnAmount,
+      doc.lastTransactionDate,
       (doc as any).createdAt || new Date(),
       (doc as any).updatedAt || new Date(),
     );
@@ -68,6 +73,10 @@ export class WalletRepositoryImpl implements IWalletRepository {
       balance: wallet.balance,
       totalEarnings: wallet.totalEarnings,
       todayEarnings: wallet.todayEarnings,
+      accountNumber: wallet.accountNumber,
+      accountName: wallet.accountName,
+      lastWithdrawnAmount: wallet.lastWithdrawnAmount,
+      lastTransactionDate: wallet.lastTransactionDate,
       createdAt: wallet.createdAt,
       updatedAt: wallet.updatedAt,
     };

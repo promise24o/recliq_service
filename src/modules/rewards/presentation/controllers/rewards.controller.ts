@@ -1,5 +1,5 @@
 import { Controller, Get, Post, UseGuards, Request, Query, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 
 // Use Cases
@@ -364,6 +364,19 @@ export class RewardsController {
     summary: 'Redeem referral points',
     description: 'Redeems completed referral points for wallet credit. Each referral point is worth 10x its value in wallet currency. You can redeem specific referrals by providing their IDs, or redeem all completed referrals.',
     security: [{ 'JWT-auth': [] }]
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        referralIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional array of specific referral IDs to redeem. If not provided, all completed referrals will be redeemed.',
+          example: ['ref_123', 'ref_456']
+        }
+      }
+    }
   })
   @ApiResponse({ 
     status: 200, 

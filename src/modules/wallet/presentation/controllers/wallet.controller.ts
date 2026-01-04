@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { GetWalletUseCase } from '../../application/use-cases/get-wallet.usecase';
 import { GetTransactionsUseCase } from '../../application/use-cases/get-transactions.usecase';
 import { GetEarningsSummaryUseCase } from '../../application/use-cases/get-earnings-summary.usecase';
+import { GetWalletOverviewUseCase } from '../../application/use-cases/get-wallet-overview.usecase';
 import { VerifyBankAccountUseCase } from '../../application/use-cases/verify-bank-account.usecase';
 import { LinkBankAccountUseCase } from '../../application/use-cases/link-bank-account.usecase';
 import { GetBankAccountsUseCase } from '../../application/use-cases/get-bank-accounts.usecase';
@@ -34,6 +35,7 @@ import {
   BankVerificationResponseDto,
   BanksListResponseDto,
 } from '../dto/wallet.dto';
+import { ModernWalletCardDto } from '../dto/modern-wallet-card.dto';
 import { RemoveBankAccountDto } from '../dto/remove-bank-account.dto';
 import { EarningsPeriod } from '../../domain/enums/wallet.enum';
 
@@ -57,6 +59,7 @@ export class WalletController {
     private readonly getWalletUseCase: GetWalletUseCase,
     private readonly getTransactionsUseCase: GetTransactionsUseCase,
     private readonly getEarningsSummaryUseCase: GetEarningsSummaryUseCase,
+    private readonly getWalletOverviewUseCase: GetWalletOverviewUseCase,
     private readonly verifyBankAccountUseCase: VerifyBankAccountUseCase,
     private readonly linkBankAccountUseCase: LinkBankAccountUseCase,
     private readonly getBankAccountsUseCase: GetBankAccountsUseCase,
@@ -117,6 +120,58 @@ export class WalletController {
       createdAt: wallet.createdAt.toISOString(),
       updatedAt: wallet.updatedAt.toISOString(),
     };
+  }
+
+  // Wallet Overview (Modern Card View)
+  @Get('overview')
+  @ApiOperation({ 
+    summary: 'Get modern wallet card overview',
+    description: 'Returns comprehensive wallet information in a modern card format including balance, earnings, account details, and transaction history',
+    security: [{ 'JWT-auth': [] }]
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Wallet overview retrieved successfully',
+    type: ModernWalletCardDto,
+    examples: {
+      example: {
+        summary: 'Sample wallet overview',
+        value: {
+          availableBalance: 300000,
+          todayEarnings: 10000,
+          lastWithdrawnAmount: 20000,
+          accountNumber: '3447838348',
+          accountName: 'JOHN DOE',
+          totalEarnings: 500000,
+          lastTransactionDate: '2025-01-04T06:30:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Unauthorized - Invalid or missing JWT token',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Unauthorized' }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Wallet not found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 404 },
+        message: { type: 'string', example: 'Wallet not found' }
+      }
+    }
+  })
+  async getWalletOverview(@Request() req): Promise<ModernWalletCardDto> {
+    return this.getWalletOverviewUseCase.execute(req.user.id);
   }
 
   // Transactions

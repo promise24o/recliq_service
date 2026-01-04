@@ -5,6 +5,7 @@ import { Badge, UserBadge } from '../entities/badge.entity';
 import { EnvironmentalImpact } from '../entities/environmental-impact.entity';
 import { Challenge, UserChallengeProgress } from '../entities/challenge.entity';
 import { ReferralReward, ReferralStatus } from '../entities/referral-reward.entity';
+import { RewardActivity, RewardActivityType } from '../entities/reward-activity.entity';
 
 // Reward Points Repository
 export interface IRewardPointsRepository {
@@ -88,4 +89,12 @@ export interface IReferralRewardRepository {
   create(referral: ReferralReward): Promise<ReferralReward>;
   findByStatus(status: ReferralStatus): Promise<ReferralReward[]>;
   getReferralStats(userId: string): Promise<{ total: number; completed: number; points: number }>;
+}
+
+// Reward Activity Repository
+export interface IRewardActivityRepository {
+  findByUserId(userId: string, limit?: number, offset?: number): Promise<RewardActivity[]>;
+  create(activity: RewardActivity): Promise<RewardActivity>;
+  findByType(userId: string, type: RewardActivityType): Promise<RewardActivity[]>;
+  countByUserId(userId: string): Promise<number>;
 }

@@ -6,6 +6,7 @@ import { EmailQueueService } from '../../../../shared/email/queue/email-queue.se
 import { EmailPriority } from '../../../../shared/email/queue/email-job.interface';
 import { BadRequestException } from '../../../../core/exceptions/bad-request.exception';
 import { NotFoundException } from '../../../../core/exceptions/not-found.exception';
+import { WalletSeedingService } from '../../../wallet/infrastructure/services/wallet-seeding.service';
 
 export interface VerifyOtpInput {
   identifier: string;
@@ -19,6 +20,7 @@ export class VerifyOtpUseCase {
     private jwtService: AuthJwtService,
     private otpService: OtpService,
     private emailQueueService: EmailQueueService,
+    private walletSeedingService: WalletSeedingService,
   ) {}
 
   private async getClientLocation(req?: any): Promise<{ location: string; ipAddress: string }> {
@@ -111,6 +113,14 @@ export class VerifyOtpUseCase {
     // Save updated user
     await this.authRepository.update(user);
 
+    // Generate account number for new verified users
+    try {
+      await this.walletSeedingService.generateAccountNumberForUser(user.id);
+    } catch (error) {
+      // Log error but don't fail the verification
+      console.error(`Failed to generate account number for user ${user.id}:`, error.message);
+    }
+
     // Send login notification email if enabled
     if (user.notifications?.loginEmails && user.email) {
       const locationData = await this.getClientLocation(req);
@@ -134,7 +144,7 @@ export class VerifyOtpUseCase {
     }
 
     // Generate tokens
-    const payload = { sub: user.id, role: user.role };
+    const payload = { sub: user.id, role: user.role, adminSubRole: user.adminSubRole };
     const accessToken = this.jwtService.generateAccessToken(payload);
     const refreshToken = this.jwtService.generateRefreshToken(payload);
 

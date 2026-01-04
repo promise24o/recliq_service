@@ -152,6 +152,7 @@ export class RegisterUseCase {
       email,
       phone,
       role,
+      undefined, // adminSubRole (only for admin users)
       false, // not verified
       undefined, // password
       undefined, // pin

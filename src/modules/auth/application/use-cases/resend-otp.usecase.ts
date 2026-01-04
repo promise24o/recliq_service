@@ -46,11 +46,7 @@ export class ResendOtpUseCase {
       throw new NotFoundException('User not found');
     }
 
-    if (existingUser.isVerified) {
-      throw new BadRequestException('User is already verified');
-    }
-
-    // Generate new OTP
+    // Generate new OTP (allow both verified and unverified users to get OTP for login)
     const otp = this.otpService.generateOtp();
     const expiresAt = this.otpService.getOtpExpiry();
     await existingUser.setOtp(otp, expiresAt, this.otpService);

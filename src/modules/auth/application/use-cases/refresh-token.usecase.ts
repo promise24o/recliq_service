@@ -18,6 +18,7 @@ export class RefreshTokenUseCase {
       const newAccessToken = this.jwtService.generateAccessToken({
         sub: payload.sub,
         role: payload.role,
+        adminSubRole: payload.adminSubRole,
       });
 
       return { accessToken: newAccessToken };

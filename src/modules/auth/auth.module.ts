@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -32,6 +32,7 @@ import { Env } from '../../core/config/env';
 import { AuthThrottleGuard } from '../../shared/guards/throttle.guard';
 import { SharedEmailModule } from '../../shared/email/shared-email.module';
 import { RewardsModule } from '../rewards/rewards.module';
+import { WalletModule } from '../wallet/wallet.module';
 import { ReferralRewardRepositoryImpl } from '../rewards/infrastructure/persistence/referral-reward.repository.impl';
 import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/referral-reward.model';
 
@@ -62,6 +63,7 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
     }),
     SharedEmailModule,
     RewardsModule,
+    forwardRef(() => WalletModule),
   ],
   controllers: [AuthController],
   providers: [

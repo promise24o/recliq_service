@@ -1,5 +1,6 @@
 import { Schema, Document, Types } from 'mongoose';
 import { UserRole } from '../../../../shared/constants/roles';
+import { AdminSubRole } from '../../../../shared/constants/admin-sub-roles';
 
 export interface UserDocument extends Document {
   _id: Types.ObjectId;
@@ -7,6 +8,7 @@ export interface UserDocument extends Document {
   email?: string;
   phone?: string;
   role: UserRole;
+  adminSubRole?: AdminSubRole;
   isVerified: boolean;
   password?: string;
   pin?: string;
@@ -28,6 +30,7 @@ export const UserSchema = new Schema<UserDocument>({
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, unique: true, sparse: true },
   role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
+  adminSubRole: { type: String, enum: Object.values(AdminSubRole) },
   isVerified: { type: Boolean, default: false },
   password: { type: String, required: true },
   pin: { type: String },

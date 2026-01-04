@@ -7,6 +7,10 @@ export class Wallet {
     public balance: number,
     public totalEarnings: number,
     public todayEarnings: number,
+    public accountNumber: string | null = null,
+    public accountName: string | null = null,
+    public lastWithdrawnAmount: number = 0,
+    public lastTransactionDate: Date | null = null,
     public readonly createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
   ) {}
@@ -45,6 +49,18 @@ export class Wallet {
     this.updatedAt = new Date();
   }
 
+  updateAccountDetails(accountNumber: string, accountName: string): void {
+    this.accountNumber = accountNumber;
+    this.accountName = accountName;
+    this.updatedAt = new Date();
+  }
+
+  recordWithdrawal(amount: number): void {
+    this.lastWithdrawnAmount = amount;
+    this.lastTransactionDate = new Date();
+    this.updatedAt = new Date();
+  }
+
   static create(userId: string): Wallet {
     return new Wallet(
       uuidv4(),
@@ -52,6 +68,10 @@ export class Wallet {
       0, // balance
       0, // totalEarnings
       0, // todayEarnings
+      null, // accountNumber
+      null, // accountName
+      0, // lastWithdrawnAmount
+      null, // lastTransactionDate
       new Date(),
       new Date(),
     );

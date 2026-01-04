@@ -74,6 +74,7 @@ export class ResetPasswordUseCase {
       sub: user.id,
       email: user.email?.getValue(),
       role: user.role,
+      adminSubRole: user.adminSubRole,
     };
 
     const accessToken = this.jwtService.generateAccessToken(payload);

@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; email?: string; role: string }) {
+  async validate(payload: { sub: string; email?: string; role: string; adminSubRole?: string }) {
     const user = await this.authRepository.findById(payload.sub);
     if (!user) {
       throw new Error('User not found');
@@ -27,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id,
       email: user.email?.getValue(),
       role: user.role,
+      adminSubRole: user.adminSubRole,
       name: user.name,
       phone: user.phone,
       isVerified: user.isVerified,

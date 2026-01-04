@@ -31,6 +31,7 @@ import { EnvironmentalImpactRepositoryImpl } from './infrastructure/persistence/
 import { ChallengeRepositoryImpl } from './infrastructure/persistence/challenge.repository.impl';
 import { UserChallengeProgressRepositoryImpl } from './infrastructure/persistence/challenge.repository.impl';
 import { ReferralRewardRepositoryImpl } from './infrastructure/persistence/referral-reward.repository.impl';
+import { RewardActivityRepositoryImpl } from './infrastructure/persistence/reward-activity.repository.impl';
 import { AuthRepositoryImpl } from '../auth/infrastructure/persistence/auth.repository.impl';
 import { WalletRepositoryImpl } from '../wallet/infrastructure/persistence/wallet.repository.impl';
 
@@ -42,6 +43,7 @@ import { BadgeSchema, UserBadgeSchema } from './infrastructure/persistence/badge
 import { EnvironmentalImpactSchema } from './infrastructure/persistence/environmental-impact.model';
 import { ChallengeSchema, UserChallengeProgressSchema } from './infrastructure/persistence/challenge.model';
 import { ReferralRewardSchema } from './infrastructure/persistence/referral-reward.model';
+import { RewardActivitySchema } from './infrastructure/persistence/reward-activity.model';
 import { UserSchema } from '../auth/infrastructure/persistence/user.model';
 import { WalletSchema } from '../wallet/infrastructure/persistence/wallet.model';
 
@@ -70,6 +72,7 @@ import {
       { name: 'ChallengeDocument', schema: ChallengeSchema },
       { name: 'UserChallengeProgressDocument', schema: UserChallengeProgressSchema },
       { name: 'ReferralRewardDocument', schema: ReferralRewardSchema },
+      { name: 'RewardActivityDocument', schema: RewardActivitySchema },
       { name: 'User', schema: UserSchema },
       { name: 'Wallet', schema: WalletSchema },
     ]),
@@ -129,6 +132,10 @@ import {
     {
       provide: 'IWalletRepository',
       useClass: WalletRepositoryImpl,
+    },
+    {
+      provide: 'IRewardActivityRepository',
+      useClass: RewardActivityRepositoryImpl,
     },
 
     // Use Cases
