@@ -31,6 +31,10 @@ export class Env {
     return this.configService.get<string>('EMAIL_USER') || '';
   }
 
+  get emailUserName(): string {
+    return this.configService.get<string>('EMAIL_NAME') || '';
+  }
+
   get emailPassword(): string {
     return this.configService.get<string>('EMAIL_PASSWORD') || '';
   }

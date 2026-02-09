@@ -2,7 +2,6 @@ import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { MongooseModule } from '@nestjs/mongoose';
-import { BullModule } from '@nestjs/bull';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './presentation/controllers/auth.controller';
@@ -51,16 +50,6 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
       ttl: 60, // 1 minute
       limit: 100, // 100 requests per minute globally
     }]),
-    BullModule.forRootAsync({
-      useFactory: () => ({
-        redis: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379'),
-          password: process.env.REDIS_PASSWORD || undefined,
-          db: parseInt(process.env.REDIS_DB || '0'),
-        },
-      }),
-    }),
     SharedEmailModule,
     RewardsModule,
     forwardRef(() => WalletModule),

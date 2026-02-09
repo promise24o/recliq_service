@@ -89,7 +89,7 @@ export class VerifyOtpUseCase {
   async execute(input: VerifyOtpInput, req?: any): Promise<{
     accessToken: string;
     refreshToken: string;
-    user: { id: string; name: string; email?: string; phone?: string; role: string };
+    user: { id: string; name: string; email?: string; phone?: string; role: string; pin?: string };
   }> {
     const { identifier, otp } = input;
 
@@ -157,6 +157,7 @@ export class VerifyOtpUseCase {
         email: user.email?.getValue(),
         phone: user.phone?.getValue(),
         role: user.role,
+        pin: user.pin,
       },
     };
   }

@@ -102,7 +102,7 @@ export class EnhancedBrevoEmailService {
     await axios.post(
       'https://api.brevo.com/v3/smtp/email',
       {
-        sender: { email: this.env.emailSenderAddress },
+        sender: { email: this.env.emailSenderAddress, name: this.env.emailUserName },
         to: [{ email: to }],
         subject,
         htmlContent,

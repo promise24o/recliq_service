@@ -119,6 +119,7 @@ export class AuthController {
               }
             },
             hasPin: { type: 'boolean', example: true },
+            pin: { type: 'string', example: 'hashed_pin_value' },
             createdAt: { type: 'string', example: '2026-01-01T19:38:05.542Z' },
             updatedAt: { type: 'string', example: '2026-01-02T10:57:10.765Z' }
           }
@@ -426,6 +427,7 @@ export class AuthController {
           }
         },
         hasPin: { type: 'boolean', example: true },
+        pin: { type: 'string', example: 'hashed_pin_value' },
         createdAt: { type: 'string', example: '2026-01-01T19:38:05.542Z' },
         updatedAt: { type: 'string', example: '2026-01-02T10:57:10.765Z' }
       }
@@ -451,6 +453,7 @@ export class AuthController {
       referralCode: user.referralCode,
       notifications: user.notifications,
       hasPin,
+      pin: user.pin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

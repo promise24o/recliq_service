@@ -59,7 +59,7 @@ export class Streak {
   getWeeklyActivity(): { [key: string]: boolean } {
     const today = new Date();
     const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+    weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1); // Start of week (Monday)
     
     const activity: { [key: string]: boolean } = {
       sun: false,
@@ -71,13 +71,13 @@ export class Streak {
       sat: false,
     };
 
-    // For now, we'll mark today as active if there's a recent recycle
+    // For now, we'll mark the recycle day as active if there's a recent recycle
     // In a real implementation, this would track actual daily activity
     if (this.lastRecycleDate && this.isActive) {
       const daysSinceLastRecycle = Math.floor((today.getTime() - this.lastRecycleDate.getTime()) / (1000 * 60 * 60 * 24));
       if (daysSinceLastRecycle < 7) {
         const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        activity[dayNames[today.getDay()]] = true;
+        activity[dayNames[this.lastRecycleDate.getDay()]] = true;
       }
     }
 
