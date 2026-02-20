@@ -335,13 +335,29 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(@Body() dto: UpdateProfileDto, @Request() req) {
-    return this.updateProfileUseCase.execute({
+    const updateData: any = {
       userId: req.user.id,
       profilePhoto: dto.profilePhoto,
       phone: dto.phone,
       priceUpdates: dto.priceUpdates,
       loginEmails: dto.loginEmails,
-    });
+    };
+
+    // Include location updates for users and agents, but not admins
+    if (req.user.role === 'USER' || req.user.role === 'AGENT') {
+      if (dto.coordinates || dto.address || dto.city || dto.state || dto.country) {
+        updateData.location = {
+          type: 'Point',
+          coordinates: dto.coordinates || [0, 0],
+          address: dto.address,
+          city: dto.city,
+          state: dto.state,
+          country: dto.country,
+        };
+      }
+    }
+
+    return this.updateProfileUseCase.execute(updateData);
   }
 
   @Post('change-password')
@@ -419,6 +435,18 @@ export class AuthController {
         biometricEnabled: { type: 'boolean', example: false },
         profilePhoto: { type: 'string', example: null },
         referralCode: { type: 'string', example: 'ABC123' },
+        location: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', example: 'Point' },
+            coordinates: { type: 'array', items: { type: 'number' }, example: [6.9749678, 4.795202] },
+            address: { type: 'string', example: 'Eagle Island Rd, Port Harcourt, Rivers, Nigeria' },
+            city: { type: 'string', example: 'Port Harcourt' },
+            state: { type: 'string', example: 'Rivers' },
+            country: { type: 'string', example: 'Nigeria' }
+          },
+          nullable: true
+        },
         notifications: {
           type: 'object',
           properties: {
@@ -440,7 +468,7 @@ export class AuthController {
     // Check if user has PIN set
     const hasPin = !!user.pin;
     
-    return {
+    const profileData: any = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -457,5 +485,12 @@ export class AuthController {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+
+    // Include location for users and agents, but not admins
+    if (user.role === 'USER' || user.role === 'AGENT') {
+      profileData.location = user.location;
+    }
+    
+    return profileData;
   }
 }

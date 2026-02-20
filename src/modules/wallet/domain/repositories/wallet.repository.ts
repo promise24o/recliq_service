@@ -9,6 +9,11 @@ export interface IWalletRepository {
   findByUserId(userId: string): Promise<Wallet | null>;
   update(wallet: Wallet): Promise<void>;
   updateTodayEarnings(userId: string, amount: number): Promise<void>;
+  findAll(): Promise<Wallet[]>;
+  findAllWithFilter(filter: any, skip?: number, limit?: number): Promise<Wallet[]>;
+  countWithFilter(filter: any): Promise<number>;
+  getRecentTransactions(userId: string, limit?: number): Promise<any[]>;
+  getAllTransactions(): Promise<any[]>;
 }
 
 export interface ITransactionRepository {

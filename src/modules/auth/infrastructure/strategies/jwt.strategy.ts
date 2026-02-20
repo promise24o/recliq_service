@@ -36,6 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       profilePhoto: user.profilePhoto,
       referralCode: user.referralCode,
       notifications: user.notifications,
+      location: user.location,   
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

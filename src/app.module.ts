@@ -4,9 +4,14 @@ import { BullModule } from '@nestjs/bull';
 import { CoreConfigModule } from './core/config/config.module';
 import { DatabaseModule } from './core/database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { ZonesModule } from './modules/zones/zones.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { UsersModule } from './modules/users/users.module';
+import { KycModule } from './modules/kyc/kyc.module';
 import { RequestLoggingMiddleware } from './shared/middleware/request-logging.middleware';
 
 @Module({
@@ -28,9 +33,14 @@ import { RequestLoggingMiddleware } from './shared/middleware/request-logging.mi
     CoreConfigModule,
     DatabaseModule,
     AuthModule,
+    AdminModule,
+    ZonesModule,
     NotificationsModule,
     WalletModule,
     RewardsModule,
+    ActivityModule,
+    UsersModule,
+    KycModule,
   ],
 })
 export class AppModule implements NestModule {

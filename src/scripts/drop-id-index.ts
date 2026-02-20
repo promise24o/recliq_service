@@ -12,9 +12,9 @@ async function dropIdIndex() {
     
     // Drop the unique index on the id field
     try {
-      await bankAccountModel.collection.dropIndex('id_1');
+      await (bankAccountModel.collection as any).dropIndex('id_1');
       console.log('Successfully dropped id_1 index');
-    } catch (error) {
+    } catch (error: any) {
       if (error.message.includes('index not found')) {
         console.log('id_1 index does not exist, continuing...');
       } else {
@@ -23,8 +23,8 @@ async function dropIdIndex() {
     }
     
     // List all indexes to verify
-    const indexes = await bankAccountModel.collection.listIndexes().toArray();
-    console.log('Current indexes:', indexes.map(idx => idx.name));
+    const indexes = await (bankAccountModel.collection as any).listIndexes().toArray();
+    console.log('Current indexes:', indexes.map((idx: any) => idx.name));
     
     console.log('Index drop completed successfully');
   } catch (error) {

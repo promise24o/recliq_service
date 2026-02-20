@@ -19,6 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:user": "ts-node -r tsconfig-paths/register src/scripts/seed-user.ts",
+    "seed:users-kyc": "ts-node -r tsconfig-paths/register src/scripts/seed-users-kyc.ts",
+    "seed:transactions": "ts-node -r tsconfig-paths/register src/scripts/seed-transactions.ts",
     "generate:account": "ts-node -r tsconfig-paths/register src/scripts/generate-account-number.ts",
     "update:account": "ts-node -r tsconfig-paths/register src/scripts/update-account-name.ts",
     "fix:account": "ts-node -r tsconfig-paths/register src/scripts/fix-account-name.ts",

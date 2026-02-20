@@ -106,6 +106,7 @@ export class UserSeedingService {
         user.profilePhoto,
         userReferralCode, // Add the referral code
         user.notifications,
+        undefined, // location (not set during seeding)
         user.otp,
         user.otpExpiresAt,
         user.createdAt,

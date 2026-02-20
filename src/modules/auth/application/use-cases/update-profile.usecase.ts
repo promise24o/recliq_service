@@ -7,6 +7,14 @@ export interface UpdateProfileInput {
   phone?: string;
   priceUpdates?: boolean;
   loginEmails?: boolean;
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
 }
 
 @Injectable()
@@ -16,7 +24,7 @@ export class UpdateProfileUseCase {
   ) {}
 
   async execute(input: UpdateProfileInput): Promise<{ message: string }> {
-    const { userId, profilePhoto, phone, priceUpdates, loginEmails } = input;
+    const { userId, profilePhoto, phone, priceUpdates, loginEmails, location } = input;
 
     // Find user
     const user = await this.authRepository.findById(userId);
@@ -38,6 +46,10 @@ export class UpdateProfileUseCase {
         priceUpdates,
         loginEmails,
       });
+    }
+
+    if (location) {
+      user.updateLocation(location);
     }
 
     // Update user in repository

@@ -51,6 +51,42 @@ export class WalletRepositoryImpl implements IWalletRepository {
     );
   }
 
+  async findAll(): Promise<Wallet[]> {
+    const docs = await this.walletModel.find().exec();
+    return docs.map(doc => this.toEntity(doc));
+  }
+
+  async findAllWithFilter(filter: any, skip: number = 0, limit?: number): Promise<Wallet[]> {
+    const query = this.walletModel.find(filter);
+    
+    if (skip > 0) {
+      query.skip(skip);
+    }
+    
+    if (limit) {
+      query.limit(limit);
+    }
+    
+    const docs = await query.exec();
+    return docs.map(doc => this.toEntity(doc));
+  }
+
+  async countWithFilter(filter: any): Promise<number> {
+    return this.walletModel.countDocuments(filter).exec();
+  }
+
+  async getRecentTransactions(userId: string, limit: number = 10): Promise<any[]> {
+    // This method should be handled by the transaction repository directly
+    // Returning empty array for now - the use case will handle transaction fetching
+    return [];
+  }
+
+  async getAllTransactions(): Promise<any[]> {
+    // This method should be handled by the transaction repository directly
+    // Returning empty array for now - the use case will handle transaction fetching
+    return [];
+  }
+
   private toEntity(doc: WalletDocument): Wallet {
     return new Wallet(
       doc._id.toString(),

@@ -26,7 +26,9 @@ import { PasswordService } from './infrastructure/security/password.service';
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 import { BackblazeService } from './infrastructure/storage/backblaze.service';
 import { UserSchema } from './infrastructure/persistence/user.model';
+import { ActivitySchema } from './infrastructure/persistence/activity.model';
 import { AuthRepositoryImpl } from './infrastructure/persistence/auth.repository.impl';
+import { ActivityLoggingService } from './domain/services/activity-logging.service';
 import { Env } from '../../core/config/env';
 import { AuthThrottleGuard } from '../../shared/guards/throttle.guard';
 import { SharedEmailModule } from '../../shared/email/shared-email.module';
@@ -44,6 +46,7 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
     }),
     MongooseModule.forFeature([
       { name: 'User', schema: UserSchema },
+      { name: 'Activity', schema: ActivitySchema },
       { name: 'ReferralRewardDocument', schema: ReferralRewardSchema },
     ]),
     ThrottlerModule.forRoot([{
@@ -84,6 +87,7 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
     PasswordService,
     JwtStrategy,
     BackblazeService,
+    ActivityLoggingService,
     AuthThrottleGuard,
     {
       provide: 'THROTTLER_OPTIONS',
@@ -98,6 +102,6 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
       inject: [ConfigService],
     },
   ],
-  exports: [AuthJwtService, 'IAuthRepository'],
+  exports: [AuthJwtService, 'IAuthRepository', ActivityLoggingService, BackblazeService],
 })
 export class AuthModule {}

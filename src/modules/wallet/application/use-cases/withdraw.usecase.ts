@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { WALLET_REPOSITORY_TOKEN } from '../../domain/repositories/wallet.repository.token';
 import type { IWalletRepository, ITransactionRepository, IBankAccountRepository } from '../../domain/repositories/wallet.repository';
 import { Wallet } from '../../domain/entities/wallet.entity';
 import { Transaction } from '../../domain/entities/transaction.entity';
@@ -8,7 +9,7 @@ import { PaystackService } from '../../infrastructure/paystack/paystack.service'
 @Injectable()
 export class WithdrawUseCase {
   constructor(
-    @Inject('IWalletRepository')
+    @Inject(WALLET_REPOSITORY_TOKEN)
     private readonly walletRepository: IWalletRepository,
     @Inject('ITransactionRepository')
     private readonly transactionRepository: ITransactionRepository,

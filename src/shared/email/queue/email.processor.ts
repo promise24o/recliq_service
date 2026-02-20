@@ -52,6 +52,14 @@ export class EmailProcessor {
           payload.accountName,
           payload.removedAt
         );
+      } else if (template === 'admin-welcome') {
+        await this.enhancedBrevoEmailService.sendAdminWelcomeEmail(
+          to,
+          payload.name,
+          payload.email,
+          payload.password,
+          payload.adminSubRole
+        );
       } else {
         // Handle unknown templates
         this.logger.warn(`Unknown template: ${template}`);

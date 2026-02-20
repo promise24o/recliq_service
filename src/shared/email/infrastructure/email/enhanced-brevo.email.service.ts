@@ -25,6 +25,8 @@ export class EnhancedBrevoEmailService {
         host: this.env.emailHost,
         port: this.env.emailPort,
         secure: false, // TLS
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
         auth: {
           user: this.env.emailUser,
           pass: this.env.emailPassword,
@@ -38,8 +40,8 @@ export class EnhancedBrevoEmailService {
       if (this.smtpTransporter) {
         this.smtpTransporter.verify((error, success) => {
           if (error) {
-            this.logger.warn('SMTP connection failed, will use API fallback', error);
-            this.smtpTransporter = null;
+            this.logger.warn('SMTP verification failed during startup, but will still try to send emails', error);
+            // Don't set smtpTransporter to null - still attempt sending
           } else {
             this.logger.log('SMTP transporter initialized successfully');
           }
@@ -53,34 +55,43 @@ export class EnhancedBrevoEmailService {
   async sendEmail(emailData: EmailTemplate): Promise<void> {
     const { to, subject, htmlContent } = emailData;
 
-    // Try SMTP first
+    // SMTP only - no API fallback
     if (this.smtpTransporter) {
       try {
         await this.sendViaSmtp(to, subject, htmlContent);
         this.logger.log(`Email sent via SMTP to ${to}`);
         return;
       } catch (error) {
-        this.logger.warn(`SMTP failed for ${to}, falling back to API`, error);
+        this.logger.error(`SMTP failed for ${to}`, error);
+        throw new Error('Email sending failed - SMTP unavailable');
       }
-    }
-
-    // Fallback to API
-    try {
-      await this.sendViaApi(to, subject, htmlContent);
-      this.logger.log(`Email sent via API to ${to}`);
-    } catch (error) {
-      this.logger.error(`Both SMTP and API failed for ${to}`, error);
-      throw new Error('Email sending failed - all methods exhausted');
+    } else {
+      this.logger.error('SMTP transporter not available');
+      throw new Error('Email sending failed - SMTP not configured');
     }
   }
 
   private async sendViaSmtp(to: string, subject: string, htmlContent: string): Promise<void> {
-    await this.smtpTransporter!.sendMail({
-      from: this.env.emailSenderAddress,
-      to,
-      subject,
-      html: htmlContent,
-    });
+    try {
+      const result = await this.smtpTransporter!.sendMail({
+        from: this.env.emailSenderAddress,
+        to,
+        subject,
+        html: htmlContent,
+      });
+      
+      this.logger.log(`SMTP Send Result:`, {
+        messageId: result.messageId,
+        response: result.response,
+        accepted: result.accepted,
+        rejected: result.rejected,
+        pending: result.pending,
+        envelope: result.envelope
+      });
+    } catch (error) {
+      this.logger.error(`SMTP Send Error Details:`, error);
+      throw error;
+    }
   }
 
   private async sendViaApi(to: string, subject: string, htmlContent: string): Promise<void> {
@@ -202,6 +213,21 @@ export class EnhancedBrevoEmailService {
     });
   }
 
+  async sendAdminWelcomeEmail(
+    to: string,
+    name: string,
+    email: string,
+    password: string,
+    adminSubRole: string
+  ): Promise<void> {
+    const template = this.buildAdminWelcomeTemplate(name, email, password, adminSubRole);
+    await this.sendEmail({
+      to,
+      subject: 'Welcome to Recliq - Admin Account Created',
+      htmlContent: template,
+    });
+  }
+
   // Base template builder
   private buildBaseTemplate(title: string, content: string): string {
     const commonStyles = this.getCommonStyles();
@@ -247,7 +273,6 @@ export class EnhancedBrevoEmailService {
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
       }
     .header { 
-      background: linear-gradient(135deg, #000000 0%, #050214 100%); 
       padding: 20px; 
       text-align: center; 
     }
@@ -315,7 +340,7 @@ export class EnhancedBrevoEmailService {
     return `
       <div class="header">
         <div class="logo">
-          <img src="https://i.ibb.co/DHvFfXvr/app-icon-white.png" alt="Recliq Pro Logo">
+          <img src="https://i.ibb.co/VWtTsqZ9/app-icon-v2-color.png" alt="Recliq Pro Logo">
         </div>
       </div>
     `;
@@ -511,6 +536,52 @@ export class EnhancedBrevoEmailService {
     `;
     
     return this.buildBaseTemplate('Bank Account Removed', content);
+  }
+
+  private buildAdminWelcomeTemplate(
+    name: string,
+    email: string,
+    password: string,
+    adminSubRole: string
+  ): string {
+    const roleNames: Record<string, string> = {
+      'OPS_ADMIN': 'Operations Administrator',
+      'FINANCE_ADMIN': 'Finance Administrator',
+      'STRATEGY_ADMIN': 'Strategy Administrator',
+      'SUPER_ADMIN': 'Super Administrator',
+    };
+    
+    const roleName = roleNames[adminSubRole] || adminSubRole;
+    
+    const content = `
+      <h2>Welcome to Recliq, ${name}!</h2>
+      <p>Your admin account has been successfully created. You now have access to the Recliq admin dashboard with <strong>${roleName}</strong> privileges.</p>
+      
+      <div style="background-color: #f0fdf4; border: 1px solid #10b981; border-left: 4px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #059669; margin-top: 0; margin-bottom: 16px;">Your Login Credentials</h3>
+        <p style="margin: 8px 0; color: #374151;"><strong>Email:</strong> ${email}</p>
+        <p style="margin: 8px 0; color: #374151;"><strong>Password:</strong> <span style="font-family: monospace; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">${password}</span></p>
+        <p style="margin: 8px 0; color: #374151;"><strong>Role:</strong> ${roleName}</p>
+      </div>
+      
+      <div class="security-notice">
+        <p><strong>🔒 Important Security Notice:</strong></p>
+        <ul style="margin: 8px 0; padding-left: 20px;">
+          <li>Please change your password immediately after your first login</li>
+          <li>Never share your credentials with anyone</li>
+          <li>Use a strong, unique password</li>
+          <li>Enable two-factor authentication if available</li>
+        </ul>
+      </div>
+      
+      <p>You can access the admin dashboard at: <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.recliq.com'}" style="color: #059669; text-decoration: none; font-weight: 600;">${process.env.ADMIN_DASHBOARD_URL || 'https://admin.recliq.com'}</a></p>
+      
+      <p>If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
+      
+      <p>Best regards,<br>The Recliq Team</p>
+    `;
+    
+    return this.buildBaseTemplate('Welcome to Recliq Admin', content);
   }
 
   private maskAccountNumber(accountNumber: string): string {

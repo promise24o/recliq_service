@@ -14,7 +14,14 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }));
 
   const config = new DocumentBuilder()
     .setTitle('Recliq API')
@@ -37,7 +44,7 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
-
   await app.listen(process.env.PORT ?? 3000);
 }
+
 bootstrap();

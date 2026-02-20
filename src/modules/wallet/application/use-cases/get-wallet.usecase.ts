@@ -1,11 +1,12 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { WALLET_REPOSITORY_TOKEN } from '../../domain/repositories/wallet.repository.token';
 import type { IWalletRepository } from '../../domain/repositories/wallet.repository';
 import { Wallet } from '../../domain/entities/wallet.entity';
 
 @Injectable()
 export class GetWalletUseCase {
   constructor(
-    @Inject('IWalletRepository')
+    @Inject(WALLET_REPOSITORY_TOKEN)
     private readonly walletRepository: IWalletRepository,
   ) {}
 

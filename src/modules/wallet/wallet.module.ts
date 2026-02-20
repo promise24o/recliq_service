@@ -2,6 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import { WalletController } from './presentation/controllers/wallet.controller';
+import { AdminWalletController } from './presentation/controllers/admin-wallet.controller';
+import { UserLedgerController } from './presentation/controllers/user-ledger.controller';
 import { GetWalletUseCase } from './application/use-cases/get-wallet.usecase';
 import { GetTransactionsUseCase } from './application/use-cases/get-transactions.usecase';
 import { GetEarningsSummaryUseCase } from './application/use-cases/get-earnings-summary.usecase';
@@ -12,9 +14,12 @@ import { SetDefaultBankAccountUseCase } from './application/use-cases/set-defaul
 import { RemoveBankAccountUseCase } from './application/use-cases/remove-bank-account.usecase';
 import { WithdrawUseCase } from './application/use-cases/withdraw.usecase';
 import { GetWalletOverviewUseCase } from './application/use-cases/get-wallet-overview.usecase';
+import { AdminWalletUseCase } from './application/use-cases/admin-wallet.usecase';
+import { UserLedgerUseCase } from './application/use-cases/user-ledger.usecase';
 import { WalletRepositoryImpl } from './infrastructure/persistence/wallet.repository.impl';
 import { TransactionRepositoryImpl } from './infrastructure/persistence/transaction.repository.impl';
 import { BankAccountRepositoryImpl } from './infrastructure/persistence/bank-account.repository.impl';
+import { WALLET_REPOSITORY_TOKEN } from './domain/repositories/wallet.repository.token';
 import { PaystackService } from './infrastructure/paystack/paystack.service';
 import { BankAccountNotificationService } from './infrastructure/email/bank-account-notification.service';
 import { WalletSchema } from './infrastructure/persistence/wallet.model';
@@ -24,6 +29,7 @@ import { WalletSeedingService } from './infrastructure/services/wallet-seeding.s
 import { Env } from '../../core/config/env';
 import { SharedEmailModule } from '../../shared/email/shared-email.module';
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -34,8 +40,9 @@ import { AuthModule } from '../auth/auth.module';
     ]),
     SharedEmailModule,
     forwardRef(() => AuthModule),
+    UsersModule,
   ],
-  controllers: [WalletController],
+  controllers: [WalletController, AdminWalletController, UserLedgerController],
   providers: [
     GetWalletUseCase,
     GetTransactionsUseCase,
@@ -47,10 +54,12 @@ import { AuthModule } from '../auth/auth.module';
     RemoveBankAccountUseCase,
     WithdrawUseCase,
     GetWalletOverviewUseCase,
+    AdminWalletUseCase,
+    UserLedgerUseCase,
     BankAccountNotificationService,
     WalletSeedingService,
     {
-      provide: 'IWalletRepository',
+      provide: WALLET_REPOSITORY_TOKEN,
       useClass: WalletRepositoryImpl,
     },
     {
@@ -69,7 +78,7 @@ import { AuthModule } from '../auth/auth.module';
     },
   ],
   exports: [
-    'IWalletRepository',
+    WALLET_REPOSITORY_TOKEN,
     'ITransactionRepository',
     'IBankAccountRepository',
     GetWalletUseCase,
@@ -82,6 +91,8 @@ import { AuthModule } from '../auth/auth.module';
     RemoveBankAccountUseCase,
     WithdrawUseCase,
     GetWalletOverviewUseCase,
+    AdminWalletUseCase,
+    UserLedgerUseCase,
     WalletSeedingService,
     PaystackService,
   ],

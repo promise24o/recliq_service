@@ -33,6 +33,11 @@ export class AuthRepositoryImpl implements IAuthRepository {
     return doc ? this.toEntity(doc) : null;
   }
 
+  async findByRole(role: string): Promise<User[]> {
+    const docs = await this.userModel.find({ role }).exec();
+    return docs.map(doc => this.toEntity(doc));
+  }
+
   async save(user: User): Promise<User> {
     const doc = this.toDocument(user);
     let saved;
@@ -46,6 +51,7 @@ export class AuthRepositoryImpl implements IAuthRepository {
         role: user.role,
         isVerified: user.isVerified,
         updatedAt: new Date(),
+        $unset: {}, // Initialize $unset object
       };
       
       // Only include OTP fields if they exist, otherwise unset them
@@ -59,6 +65,13 @@ export class AuthRepositoryImpl implements IAuthRepository {
         updateData.otpExpiresAt = user.otpExpiresAt;
       } else {
         updateData.$unset = { ...updateData.$unset, otpExpiresAt: 1 };
+      }
+      
+      // Handle adminSubRole - include if set, unset if undefined
+      if (user.adminSubRole !== undefined) {
+        updateData.adminSubRole = user.adminSubRole;
+      } else {
+        updateData.$unset = { ...updateData.$unset, adminSubRole: 1 };
       }
       
       saved = await this.userModel.findByIdAndUpdate(
@@ -92,7 +105,9 @@ export class AuthRepositoryImpl implements IAuthRepository {
       profilePhoto: user.profilePhoto,
       referralCode: user.referralCode,
       notifications: user.notifications,
+      location: user.location,  // ✅ Add location field
       updatedAt: new Date(),
+      $unset: {}, // Initialize $unset object
     };
     
     // Only include password if it exists
@@ -103,6 +118,13 @@ export class AuthRepositoryImpl implements IAuthRepository {
     // Only include PIN if it exists
     if (user.pin !== undefined) {
       updateData.pin = user.pin;
+    }
+    
+    // Handle adminSubRole - include if set, unset if undefined
+    if (user.adminSubRole !== undefined) {
+      updateData.adminSubRole = user.adminSubRole;
+    } else {
+      updateData.$unset = { ...updateData.$unset, adminSubRole: 1 };
     }
     
     // Only include OTP fields if they exist, otherwise unset them
@@ -142,7 +164,17 @@ export class AuthRepositoryImpl implements IAuthRepository {
       doc.notifications || {          // Default to false values if undefined
         priceUpdates: false,
         loginEmails: false,
+        // Admin notification preferences with defaults
+        loginAlerts: { email: true, inApp: true },
+        passwordChanges: { email: true, inApp: true },
+        failedLoginAttempts: { email: true, inApp: true },
+        pickupEscalations: { email: true, inApp: true },
+        agentStatusChanges: { email: false, inApp: true },
+        paymentApprovals: { email: true, inApp: true },
+        floatAlerts: { email: true, inApp: true },
+        systemUpdates: { email: false, inApp: true },
       },
+      doc.location,                     // Location field
       doc.otp,
       doc.otpExpiresAt,
       doc.createdAt,
@@ -164,6 +196,7 @@ export class AuthRepositoryImpl implements IAuthRepository {
       profilePhoto: user.profilePhoto,
       referralCode: user.referralCode,
       notifications: user.notifications,
+      location: user.location,  // Add location field
       otp: user.otp,
       otpExpiresAt: user.otpExpiresAt,
     };
