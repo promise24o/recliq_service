@@ -91,15 +91,18 @@ export const getDeviceInfo = (userAgent: string): string => {
  * Gets location information from IP address
  */
 export const getLocationFromIp = async (ip: string): Promise<string> => {
-  // Skip for localhost or internal IPs
-  if (ip === '127.0.0.1' || ip === 'localhost' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+  if (!ip || ip === '127.0.0.1' || ip === 'localhost' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('::ffff:127.0.0.1')) {
     return 'Local Network';
   }
   
   try {
-    // Use a free IP geolocation API (replace with your preferred service)
-    // For production, consider using a paid service with better reliability
-    const response = await axios.get(`https://ipapi.co/${ip}/json/`);
+    // Use a free IP geolocation API with timeout and error handling
+    const response = await axios.get(`https://ipapi.co/${ip}/json/`, {
+      timeout: 3000, // 3 second timeout
+      headers: {
+        'User-Agent': 'Recliq-Service/1.0'
+      }
+    });
     const data = response.data;
     
     if (data.error) {
@@ -113,8 +116,13 @@ export const getLocationFromIp = async (ip: string): Promise<string> => {
     }
     
     return 'Unknown Location';
-  } catch (error) {
-    console.error('Error getting location from IP:', error);
+  } catch (error: any) {
+    // Handle specific rate limiting error
+    if (error.response?.status === 429) {
+      console.log('IP geolocation rate limited, using fallback');
+      return 'Unknown Location';
+    }
+    console.error('Error getting location from IP:', error.message);
     return 'Unknown Location';
   }
 };

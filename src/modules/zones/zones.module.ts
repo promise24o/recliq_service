@@ -57,6 +57,8 @@ import { ICityRepository } from './domain/repositories/city.repository';
   exports: [
     'IZoneRepository',
     'ICityRepository',
+    GetCitiesUseCase,
+    GetZonesUseCase,
   ],
 })
 export class ZonesModule {}

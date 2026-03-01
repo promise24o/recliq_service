@@ -68,19 +68,20 @@ export class Notification {
   }
 
   isPersistent(): boolean {
-    // Finance, Operations, Trust & Safety, and Security notifications are persistent
+    // Finance, Operations, Trust & Safety, Security, and Vehicle notifications are persistent
     return [
       NotificationCategory.FINANCE,
       NotificationCategory.OPERATIONS,
       NotificationCategory.TRUST_SAFETY,
       NotificationCategory.SECURITY,
+      NotificationCategory.VEHICLE,
     ].includes(this.category);
   }
 
   shouldSendPush(): boolean {
     // High priority notifications and specific categories get push
     return this.isHighPriority() || 
-           [NotificationCategory.FINANCE, NotificationCategory.OPERATIONS, NotificationCategory.SECURITY].includes(this.category);
+           [NotificationCategory.FINANCE, NotificationCategory.OPERATIONS, NotificationCategory.SECURITY, NotificationCategory.VEHICLE].includes(this.category);
   }
 
   shouldSendEmail(): boolean {

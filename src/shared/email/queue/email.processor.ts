@@ -60,6 +60,25 @@ export class EmailProcessor {
           payload.password,
           payload.adminSubRole
         );
+      } else if (template === 'vehicle-status-change') {
+        await this.enhancedBrevoEmailService.sendVehicleStatusChangeEmail(
+          to,
+          payload.userName,
+          payload.plateNumber,
+          payload.oldStatus,
+          payload.newStatus,
+          payload.rejectionReason
+        );
+      } else if (template === 'document-status-change') {
+        await this.enhancedBrevoEmailService.sendDocumentStatusChangeEmail(
+          to,
+          payload.userName,
+          payload.plateNumber,
+          payload.documentName,
+          payload.oldStatus,
+          payload.newStatus,
+          payload.rejectionReason
+        );
       } else {
         // Handle unknown templates
         this.logger.warn(`Unknown template: ${template}`);

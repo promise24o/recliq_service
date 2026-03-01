@@ -16,7 +16,7 @@ import { KycSchema } from '../kyc/infrastructure/persistence/kyc.model';
     MongooseModule.forFeature([
       { name: 'User', schema: UserSchema },
       { name: 'Kyc', schema: KycSchema }
-    ])
+    ]),
   ],
   controllers: [UsersController],
   providers: [

@@ -25,7 +25,29 @@ export class KycRepositoryImpl implements IKycRepository {
   ) {}
 
   async create(kyc: Kyc): Promise<Kyc> {
-    const createdKyc = new this.kycModel(kyc);
+    // First delete any existing document to ensure clean slate
+    await this.kycModel.deleteOne({ userId: kyc.userId });
+    
+    // Create new document with explicit undefined values to override schema defaults
+    const kycData: any = {
+      userId: kyc.userId,
+      userType: kyc.userType,
+      currentTier: kyc.currentTier,
+      status: kyc.status,
+      emailVerified: kyc.emailVerified,
+      documents: kyc.documents,
+      limits: kyc.limits,
+      createdAt: kyc.createdAt,
+      updatedAt: kyc.updatedAt,
+      // Explicitly set these to undefined to prevent schema defaults
+      bvnData: undefined,
+      selfie: undefined,
+      businessDocuments: [],
+      businessDetails: undefined,
+      rejectionReason: undefined,
+    };
+    
+    const createdKyc = new this.kycModel(kycData);
     const savedKyc = await createdKyc.save();
     return this.toEntity(savedKyc);
   }

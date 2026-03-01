@@ -72,6 +72,15 @@ export interface UserDocument extends Document {
   };
   otp?: string;
   otpExpiresAt?: Date;
+  fcmTokens?: {
+    [deviceType: string]: string; // { 'android': 'token1', 'ios': 'token2' }
+  };
+  cancellationStats?: {
+    totalCancellations: number;
+    cancellationsThisMonth: number;
+    lastCancellationAt?: Date;
+    cancellationReasons: string[];
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -138,4 +147,15 @@ export const UserSchema = new Schema<UserDocument>({
   },
   otp: { type: String },
   otpExpiresAt: { type: Date },
+  fcmTokens: { 
+    type: Map, 
+    of: String, 
+    default: new Map() 
+  },
+  cancellationStats: {
+    totalCancellations: { type: Number, default: 0 },
+    cancellationsThisMonth: { type: Number, default: 0 },
+    lastCancellationAt: { type: Date },
+    cancellationReasons: [{ type: String }],
+  },
 }, { timestamps: true });

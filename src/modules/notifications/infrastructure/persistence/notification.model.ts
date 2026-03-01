@@ -13,11 +13,13 @@ export class NotificationDocument extends Document {
     'pickup_issue', 'login_detected', 'new_device_login', 'password_changed', 'suspicious_activity',
     'kyc_approved', 'kyc_rejected', 'milestone_reached', 'recycling_streak', 'bonus_earned',
     'leaderboard_update', 'co2_saved', 'monthly_recycling', 'community_impact', 'maintenance_notice',
-    'new_feature', 'policy_update', 'limited_time_bonus', 'partner_offer', 'referral_rewards'
+    'new_feature', 'policy_update', 'limited_time_bonus', 'partner_offer', 'referral_rewards',
+    'vehicle_approved', 'vehicle_rejected', 'vehicle_under_review', 'vehicle_status_changed',
+    'document_verified', 'document_rejected', 'document_upload_required'
   ]})
   type: string;
 
-  @Prop({ required: true, type: String, enum: ['finance', 'operations', 'trust_safety', 'security', 'rewards', 'impact', 'system', 'marketing'] })
+  @Prop({ required: true, type: String, enum: ['finance', 'operations', 'trust_safety', 'security', 'rewards', 'impact', 'system', 'marketing', 'vehicle'] })
   category: string;
 
   @Prop({ required: true, type: String })

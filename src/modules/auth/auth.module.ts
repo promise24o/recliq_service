@@ -5,6 +5,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './presentation/controllers/auth.controller';
+import { AdminAuthController } from './presentation/controllers/admin-auth.controller';
+import { PublicFcmController } from './presentation/controllers/public-fcm.controller';
+import { DebugFcmController } from './presentation/controllers/debug-fcm.controller';
+import { TestPromiseController } from './presentation/controllers/test-promise.controller';
+import { FirebaseTestController } from './presentation/controllers/firebase-test.controller';
+import { DirectFirebaseController } from './presentation/controllers/direct-firebase.controller';
 import { RegisterUseCase } from './application/use-cases/register.usecase';
 import { LoginUseCase } from './application/use-cases/login.usecase';
 import { VerifyOtpUseCase } from './application/use-cases/verify-otp.usecase';
@@ -19,6 +25,7 @@ import { ChangePasswordUseCase } from './application/use-cases/change-password.u
 import { UpdatePinUseCase } from './application/use-cases/update-pin.usecase';
 import { ForgotPinUseCase } from './application/use-cases/forgot-pin.usecase';
 import { SendPinResetOtpUseCase } from './application/use-cases/send-pin-reset-otp.usecase';
+import { ManageFcmTokenUseCase } from './application/use-cases/manage-fcm-token.usecase';
 import { BrevoSmsService } from './infrastructure/sms/brevo.sms.service';
 import { OtpService } from './infrastructure/security/otp.service';
 import { AuthJwtService } from './infrastructure/security/auth-jwt.service';
@@ -32,6 +39,7 @@ import { ActivityLoggingService } from './domain/services/activity-logging.servi
 import { Env } from '../../core/config/env';
 import { AuthThrottleGuard } from '../../shared/guards/throttle.guard';
 import { SharedEmailModule } from '../../shared/email/shared-email.module';
+import { FcmService } from '../../shared/fcm/fcm.service';
 import { RewardsModule } from '../rewards/rewards.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { ReferralRewardRepositoryImpl } from '../rewards/infrastructure/persistence/referral-reward.repository.impl';
@@ -57,7 +65,7 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
     RewardsModule,
     forwardRef(() => WalletModule),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AdminAuthController, PublicFcmController, DebugFcmController, TestPromiseController, FirebaseTestController, DirectFirebaseController],
   providers: [
     RegisterUseCase,
     LoginUseCase,
@@ -89,6 +97,8 @@ import { ReferralRewardSchema } from '../rewards/infrastructure/persistence/refe
     BackblazeService,
     ActivityLoggingService,
     AuthThrottleGuard,
+    ManageFcmTokenUseCase,
+    FcmService,
     {
       provide: 'THROTTLER_OPTIONS',
       useValue: {

@@ -147,6 +147,34 @@ export class AuthRepositoryImpl implements IAuthRepository {
     return this.toEntity(updated);
   }
 
+  async updatePartial(id: string, data: Partial<User>): Promise<User> {
+    const updateData: any = {
+      ...data,
+      updatedAt: new Date(),
+    };
+
+    // Handle Email value object
+    if (data.email) {
+      updateData.email = data.email.getValue();
+    }
+
+    // Handle Phone value object
+    if (data.phone) {
+      updateData.phone = data.phone.getValue();
+    }
+
+    const updated = await this.userModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    if (!updated) {
+      throw new Error('User not found');
+    }
+    return this.toEntity(updated);
+  }
+
+  async findAll(): Promise<User[]> {
+    const users = await this.userModel.find().exec();
+    return users.map(user => this.toEntity(user));
+  }
+
   private toEntity(doc: UserDocument): User {
     return new User(
       doc._id.toString(),
@@ -179,6 +207,7 @@ export class AuthRepositoryImpl implements IAuthRepository {
       doc.otpExpiresAt,
       doc.createdAt,
       doc.updatedAt,
+      doc.fcmTokens ? JSON.parse(JSON.stringify(doc.fcmTokens)) : undefined,
     );
   }
 

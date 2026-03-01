@@ -584,6 +584,143 @@ export class EnhancedBrevoEmailService {
     return this.buildBaseTemplate('Welcome to Recliq Admin', content);
   }
 
+  async sendVehicleStatusChangeEmail(
+    to: string,
+    userName: string,
+    plateNumber: string,
+    oldStatus: string,
+    newStatus: string,
+    rejectionReason?: string
+  ): Promise<void> {
+    const content = this.buildVehicleStatusChangeTemplate(userName, plateNumber, oldStatus, newStatus, rejectionReason);
+    
+    await this.sendEmail({
+      to,
+      subject: this.getVehicleStatusSubject(newStatus),
+      htmlContent: content
+    });
+  }
+
+  async sendDocumentStatusChangeEmail(
+    to: string,
+    userName: string,
+    plateNumber: string,
+    documentName: string,
+    oldStatus: string,
+    newStatus: string,
+    rejectionReason?: string
+  ): Promise<void> {
+    const content = this.buildDocumentStatusChangeTemplate(userName, plateNumber, documentName, oldStatus, newStatus, rejectionReason);
+    
+    await this.sendEmail({
+      to,
+      subject: this.getDocumentStatusSubject(newStatus, documentName),
+      htmlContent: content
+    });
+  }
+
+  private buildVehicleStatusChangeTemplate(
+    userName: string,
+    plateNumber: string,
+    oldStatus: string,
+    newStatus: string,
+    rejectionReason?: string
+  ): string {
+    const content = `
+      <h2>Hi ${userName},</h2>
+      ${this.getVehicleStatusContent(newStatus, plateNumber, rejectionReason)}
+      <p>Best regards,<br>The Recliq Team</p>
+    `;
+    
+    return this.buildBaseTemplate(this.getVehicleStatusSubject(newStatus), content);
+  }
+
+  private buildDocumentStatusChangeTemplate(
+    userName: string,
+    plateNumber: string,
+    documentName: string,
+    oldStatus: string,
+    newStatus: string,
+    rejectionReason?: string
+  ): string {
+    const content = `
+      <h2>Hi ${userName},</h2>
+      ${this.getDocumentStatusContent(newStatus, documentName, plateNumber, rejectionReason)}
+      <p>Best regards,<br>The Recliq Team</p>
+    `;
+    
+    return this.buildBaseTemplate(this.getDocumentStatusSubject(newStatus, documentName), content);
+  }
+
+  private getVehicleStatusSubject(status: string): string {
+    switch (status) {
+      case 'APPROVED':
+        return 'Vehicle Approved! 🎉';
+      case 'REJECTED':
+        return 'Vehicle Application Rejected';
+      case 'UNDER_REVIEW':
+        return 'Vehicle Under Review';
+      case 'ACTIVE':
+        return 'Vehicle Activated';
+      case 'INACTIVE':
+        return 'Vehicle Deactivated';
+      default:
+        return 'Vehicle Status Updated';
+    }
+  }
+
+  private getDocumentStatusSubject(status: string, documentName: string): string {
+    switch (status) {
+      case 'VERIFIED':
+        return `${documentName} Verified! ✅`;
+      case 'REJECTED':
+        return `${documentName} Rejected`;
+      default:
+        return `${documentName} Status Updated`;
+    }
+  }
+
+  private getVehicleStatusContent(status: string, plateNumber: string, rejectionReason?: string): string {
+    switch (status) {
+      case 'APPROVED':
+        return `
+          <p>Congratulations! Your vehicle <strong>${plateNumber}</strong> has been approved and is now active.</p>
+          <p>You can now start accepting recycling jobs through the platform.</p>
+          <p>Thank you for joining Recliq!</p>
+        `;
+      case 'REJECTED':
+        return `
+          <p>We're sorry to inform you that your vehicle application for <strong>${plateNumber}</strong> has been rejected.</p>
+          ${rejectionReason ? `<p><strong>Reason:</strong> ${rejectionReason}</p>` : ''}
+          <p>Please review the requirements and submit a new application if needed.</p>
+        `;
+      default:
+        return `
+          <p>Your vehicle <strong>${plateNumber}</strong> status has been updated to <strong>${status}</strong>.</p>
+        `;
+    }
+  }
+
+  private getDocumentStatusContent(status: string, documentName: string, plateNumber: string, rejectionReason?: string): string {
+    switch (status) {
+      case 'VERIFIED':
+        return `
+          <p>Your ${documentName} for vehicle <strong>${plateNumber}</strong> has been verified successfully!</p>
+          <p>This brings you one step closer to getting your vehicle approved.</p>
+        `;
+      case 'REJECTED':
+        return `
+          <p>Your ${documentName} for vehicle <strong>${plateNumber}</strong> has been rejected.</p>
+          ${rejectionReason ? `<p><strong>Reason:</strong> ${rejectionReason}</p>` : ''}
+          <p>Please upload a valid document and try again.</p>
+        `;
+      default:
+        return `
+          <p>Your ${documentName} status has been updated to <strong>${status}</strong>.</p>
+        `;
+    }
+  }
+
   private maskAccountNumber(accountNumber: string): string {
     if (accountNumber.length <= 4) {
       return accountNumber;

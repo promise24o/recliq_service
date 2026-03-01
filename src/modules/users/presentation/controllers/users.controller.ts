@@ -1,21 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Query,
-  Param,
-  Body,
-  UseGuards,
-  Request,
-  Response,
-  HttpStatus,
-  HttpCode,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../auth/infrastructure/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../auth/infrastructure/guards/roles.guard';
-import { Roles } from '../../../auth/infrastructure/decorators/roles.decorator';
-import { UserRole } from '../../../auth/domain/constants/user.constants';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, HttpCode, HttpStatus, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
+import { RolesGuard } from '../../../../shared/guards/roles.guard';
+import { Roles } from '../../../../shared/guards/roles.decorator';
+import { UserRole } from '../../../../shared/constants/roles';
 import { GetUsersUseCase } from '../../application/use-cases/get-users.usecase';
 import { GetUserSummaryUseCase } from '../../application/use-cases/get-user-summary.usecase';
 import { GetUserDetailUseCase } from '../../application/use-cases/get-user-detail.usecase';
@@ -101,7 +89,7 @@ export class UsersController {
   @Post('export')
   @ApiOperation({ summary: 'Export users data (CSV or PDF)' })
   @ApiResponse({ status: 200, description: 'Export file generated successfully' })
-  async exportUsers(@Body() exportDto: ExportUsersDto, @Response() res: ExpressResponse) {
+  async exportUsers(@Body() exportDto: ExportUsersDto, @Res() res: ExpressResponse) {
     const { data, filename, contentType } = await this.exportUsersUseCase.execute(exportDto);
 
     if (exportDto.format === 'csv') {
@@ -115,22 +103,6 @@ export class UsersController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.json({ message: 'PDF export not implemented yet', data });
     }
-  }
-
-  @Get('cities/list')
-  @ApiOperation({ summary: 'Get list of cities with users' })
-  @ApiResponse({ status: 200, description: 'Cities list retrieved successfully' })
-  async getCities() {
-    // This would be implemented in the repository
-    return { cities: ['Lagos', 'Port Harcourt', 'Abuja', 'Kano', 'Ibadan'] };
-  }
-
-  @Get('zones/list')
-  @ApiOperation({ summary: 'Get list of zones with users' })
-  @ApiResponse({ status: 200, description: 'Zones list retrieved successfully' })
-  async getZones() {
-    // This would be implemented in the repository
-    return { zones: ['Ikoyi', 'Victoria Island', 'GRA', 'Sabon Gari', 'Maitama'] };
   }
 
   private convertToCSV(users: any[]): string {

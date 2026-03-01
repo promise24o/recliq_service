@@ -47,4 +47,12 @@ export class ActivityFilterDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string;
+
+  @ApiProperty({ required: false, type: Number, description: 'Page number for pagination' })
+  @IsOptional()
+  page?: number;
+
+  @ApiProperty({ required: false, type: Number, description: 'Number of items per page' })
+  @IsOptional()
+  limit?: number;
 }

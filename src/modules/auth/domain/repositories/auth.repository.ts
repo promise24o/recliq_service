@@ -9,4 +9,6 @@ export interface IAuthRepository {
   findByRole(role: UserRole): Promise<User[]>;
   save(user: User): Promise<User>;
   update(user: User): Promise<User>;
+  updatePartial(id: string, data: Partial<User>): Promise<User>;
+  findAll(): Promise<User[]>;
 }

@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { RolesGuard } from '../../../../shared/guards/roles.guard';
 import { Roles } from '../../../../shared/guards/roles.decorator';
-import { UserRole } from '../../../../shared/constants/roles';
+import { UserRole } from '../../../auth/domain/constants/user.constants';
 import { CreateCityUseCase } from '../../application/use-cases/create-city.usecase';
 import { GetCitiesUseCase } from '../../application/use-cases/get-cities.usecase';
 import { GetCityUseCase } from '../../application/use-cases/get-city.usecase';
@@ -60,7 +60,7 @@ export class ZonesController {
   }
 
   @Get('cities')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all cities' })
   @ApiResponse({ status: 200, description: 'Cities retrieved successfully' })
   async getCities(
@@ -74,6 +74,21 @@ export class ZonesController {
     return this.getCitiesUseCase.execute(filters);
   }
 
+  @Get('cities/list')
+  @Roles(UserRole.USER, UserRole.AGENT)
+  @ApiOperation({ summary: 'Get list of active cities for user selection' })
+  @ApiResponse({ status: 200, description: 'Cities list retrieved successfully' })
+  async getCitiesList() {
+    const cities = await this.getCitiesUseCase.execute({ isActive: true });
+    return { 
+      cities: cities.map(city => ({
+        id: city.id,
+        name: city.name,
+        state: city.state
+      }))
+    };
+  }
+
   @Get('cities/with-zones')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get cities with zone counts' })
@@ -83,7 +98,7 @@ export class ZonesController {
   }
 
   @Get('zones')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all zones' })
   @ApiResponse({ status: 200, description: 'Zones retrieved successfully' })
   async getZones(
@@ -99,6 +114,25 @@ export class ZonesController {
     if (coverageLevel) filters.coverageLevel = coverageLevel;
 
     return this.getZonesUseCase.execute(filters);
+  }
+
+  @Get('zones/list')
+  @Roles(UserRole.USER, UserRole.AGENT)
+  @ApiOperation({ summary: 'Get list of active zones for user selection' })
+  @ApiResponse({ status: 200, description: 'Zones list retrieved successfully' })
+  async getZonesList(@Query('city') city?: string) {
+    const filters: any = { status: 'active' };
+    if (city) filters.city = city;
+    
+    const zones = await this.getZonesUseCase.execute(filters);
+    return { 
+      zones: zones.map(zone => ({
+        id: zone.id,
+        name: zone.name,
+        city: zone.city,
+        state: zone.state
+      }))
+    };
   }
 
   @Get('cities/:id')

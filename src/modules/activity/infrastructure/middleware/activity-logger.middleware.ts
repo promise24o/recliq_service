@@ -78,15 +78,21 @@ export class ActivityLoggerMiddleware implements NestMiddleware {
     const userAgent = req.headers['user-agent'] || '';
     const device = getDeviceInfo(userAgent);
     
-    // Get location from IP (async)
-    const location = await getLocationFromIp(ipAddress);
+    // Get location from IP (async) with error handling
+    let location = 'Unknown Location';
+    try {
+      location = await getLocationFromIp(ipAddress);
+    } catch (error) {
+      console.log('Activity Logger - Location lookup failed, using default');
+      location = 'Unknown Location';
+    }
     
     // Determine risk level based on action
     const riskLevel = this.determineRiskLevel(action, path);
     
     // Prepare log data
     const logData = {
-      userId: extractedUserId || undefined, // Use extracted user ID
+      userId: extractedUserId, // Keep as undefined for failed auth
       timestamp: new Date(),
       action,
       actionLabel: getActionLabel(action),
@@ -117,15 +123,20 @@ export class ActivityLoggerMiddleware implements NestMiddleware {
       
       // Log the activity asynchronously (don't wait for it)
       if (activityLogRepository) {
-        console.log('Activity Logger - Saving activity log:', {
-          action: logData.action,
-          userId: logData.userId,
-          outcome: logData.outcome
-        });
-        
-        activityLogRepository.create(logData).catch(err => {
-          console.error('Failed to log activity:', err);
-        });
+        // Skip logging for failed auth attempts without userId to avoid validation errors
+        if (logData.action === 'login' && logData.outcome === ActivityOutcome.FAILED && !logData.userId) {
+          console.log('Activity Logger - Skipping log for failed auth without userId');
+        } else {
+          console.log('Activity Logger - Saving activity log:', {
+            action: logData.action,
+            userId: logData.userId,
+            outcome: logData.outcome
+          });
+          
+          activityLogRepository.create(logData).catch(err => {
+            console.error('Failed to log activity:', err);
+          });
+        }
       } else {
         console.log('Activity Logger - No repository available');
       }
@@ -197,6 +208,8 @@ export class ActivityLoggerMiddleware implements NestMiddleware {
     if (path.includes('/finance') && (method === 'POST' || method === 'PATCH' || method === 'PUT')) return ActivityAction.FINANCE_ACTION;
     if (path.includes('/zones') && (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')) return ActivityAction.ZONE_ACTION;
     if (path.includes('/pricing') && (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')) return ActivityAction.PRICING_ACTION;
+    if (path.includes('/vehicle-details') && (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')) return ActivityAction.AGENT_ACTION;
+    if (path.includes('/agent-availability') && (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')) return ActivityAction.AGENT_ACTION;
     
     // Sensitive views
     if ((path.includes('/finance') || path.includes('/wallet')) && method === 'GET') return ActivityAction.SENSITIVE_VIEW;
@@ -241,6 +254,9 @@ export class ActivityLoggerMiddleware implements NestMiddleware {
     if (path.includes('/zones')) return 'Zone';
     if (path.includes('/pricing')) return 'Pricing Rule';
     if (path.includes('/finance')) return 'Finance';
+    if (path.includes('/vehicle-details')) return 'Vehicle Details';
+    if (path.includes('/agent-availability')) return 'Agent Availability';
+    if (path.includes('/service-radius')) return 'Service Radius';
     if (path.includes('/auth/login') || path.includes('/auth/logout')) return 'Session';
     if (path.includes('/auth')) return 'Security';
     if (path.includes('/settings')) return 'Settings';
@@ -316,6 +332,19 @@ export class ActivityLoggerMiddleware implements NestMiddleware {
         if (method === 'DELETE') return 'Deleted user';
         return 'Performed user action';
       case 'agent_action':
+        if (path.includes('/vehicle-details')) {
+          if (method === 'POST') return 'Created vehicle details';
+          if (method === 'PATCH' || method === 'PUT') return 'Updated vehicle details';
+          if (method === 'DELETE') return 'Deleted vehicle details';
+          if (path.includes('/documents')) return 'Uploaded vehicle document';
+          if (path.includes('/status')) return 'Updated vehicle status';
+        }
+        if (path.includes('/agent-availability')) {
+          if (method === 'POST') return 'Created availability schedule';
+          if (method === 'PATCH' || method === 'PUT') return 'Updated availability schedule';
+          if (method === 'DELETE') return 'Deleted availability schedule';
+          if (path.includes('/online-status')) return 'Updated online status';
+        }
         if (method === 'POST') return 'Created new agent';
         if (method === 'PATCH' || method === 'PUT') return 'Updated agent';
         if (method === 'DELETE') return 'Deleted agent';

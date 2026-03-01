@@ -31,7 +31,29 @@ export class GetKycStatusUseCase {
   ) {}
 
   async execute(userId: string): Promise<KycStatusResponse> {
-    let kyc = await this.kycRepository.findByUserId(userId);
+    const kyc = await this.kycRepository.findByUserId(userId);
+    
+    // If KYC doesn't exist, return a response indicating no KYC record
+    if (!kyc) {
+      return {
+        userId,
+        userType: KycUserType.INDIVIDUAL, // Default type
+        currentTier: KycTier.SPROUT,
+        status: KycStatus.PENDING,
+        emailVerified: false,
+        bvnVerified: false,
+        documentsUploaded: false,
+        selfieUploaded: false,
+        businessDocumentsUploaded: false,
+        businessDetails: null,
+        limits: {
+          dailyWithdrawal: 0, // No limits until KYC is initialized
+          maxWalletBalance: 0,
+        },
+        availableTiers: [KycTier.SPROUT],
+        nextTierRequirements: ['KYC initialization required'],
+      };
+    }
     
     // Get user's actual email verification status
     let userEmailVerified = false;
@@ -42,11 +64,8 @@ export class GetKycStatusUseCase {
       console.warn('Could not verify user email status:', error.message);
     }
     
-    // If KYC doesn't exist, create a default one
-    if (!kyc) {
-      kyc = await this.createDefaultKyc(userId, KycUserType.INDIVIDUAL, userEmailVerified);
-    } else if (kyc.emailVerified !== userEmailVerified) {
-      // Update KYC email verification status if it differs from user status
+    // Update KYC email verification status if it differs from user status
+    if (kyc.emailVerified !== userEmailVerified) {
       kyc.emailVerified = userEmailVerified;
       kyc.updatedAt = new Date();
       await this.kycRepository.update(kyc);
@@ -61,11 +80,11 @@ export class GetKycStatusUseCase {
       currentTier: kyc.currentTier,
       status: kyc.status,
       emailVerified: kyc.emailVerified, // Now reflects actual user verification status
-      bvnVerified: !!kyc.bvnData,
+      bvnVerified: !!kyc.bvnData && !!kyc.bvnData.bvn, // Check if BVN data has actual bvn value
       documentsUploaded: kyc.documents.length > 0,
-      selfieUploaded: !!kyc.selfie,
+      selfieUploaded: !!kyc.selfie && !!kyc.selfie.selfieUrl, // Check if selfie has actual selfieUrl
       businessDocumentsUploaded: (kyc.businessDocuments?.length || 0) > 0,
-      businessDetails: kyc.businessDetails, // Include business details in response
+      businessDetails: (kyc.businessDetails && kyc.businessDetails.businessName) ? kyc.businessDetails : null, // Only return if has actual business data
       limits: kyc.limits,
       availableTiers,
       nextTierRequirements,
@@ -73,31 +92,11 @@ export class GetKycStatusUseCase {
     };
   }
 
-  private async createDefaultKyc(userId: string, userType: KycUserType, emailVerified: boolean): Promise<Kyc> {
-    const defaultKyc = {
-      id: '', // Will be set by repository
-      userId,
-      userType,
-      currentTier: KycTier.SPROUT,
-      status: KycStatus.PENDING,
-      emailVerified, // Use actual email verification status
-      documents: [],
-      businessDocuments: [],
-      limits: {
-        dailyWithdrawal: 1000000,  // ₦1M daily withdrawal
-        maxWalletBalance: 5000000,  // ₦5M max wallet balance
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return await this.kycRepository.create(defaultKyc);
-  }
-
+  
   private getAvailableTiers(userType: KycUserType): string[] {
     switch (userType) {
       case KycUserType.INDIVIDUAL:
-        return [KycTier.SPROUT, KycTier.BLOOM];
+        return [KycTier.SPROUT, KycTier.BLOOM, KycTier.THRIVE];
       case KycUserType.ENTERPRISE:
         return [KycTier.SPROUT];
       case KycUserType.AGENT:
@@ -116,6 +115,9 @@ export class GetKycStatusUseCase {
 
     if (kyc.userType !== KycUserType.ENTERPRISE && !kyc.bvnData) {
       requirements.push('BVN verification required');
+    } else if (kyc.userType === KycUserType.AGENT && kyc.bvnData) {
+      // For agents, if BVN is already verified, don't require it again
+      // This allows seamless switching from individual to agent
     }
 
     if (kyc.userType === KycUserType.AGENT) {

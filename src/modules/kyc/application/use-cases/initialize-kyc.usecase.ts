@@ -27,12 +27,17 @@ export class InitializeKycUseCase {
   ) {}
 
   async execute(userId: string, userType: KycUserType): Promise<KycInitializeResult> {
+    console.log(`Initializing KYC for user ${userId} with type ${userType}`);
+    
     // Check if KYC already exists
     const existingKyc = await this.kycRepository.findByUserId(userId);
     
     if (existingKyc) {
+      console.log(`Existing KYC found for user ${userId} with type ${existingKyc.userType}`);
+      
       // If KYC exists but with different user type, update it
       if (existingKyc.userType !== userType) {
+        console.log(`Updating KYC user type from ${existingKyc.userType} to ${userType}`);
         // Get user's email verification status
         let emailVerified = false;
         try {
@@ -46,6 +51,18 @@ export class InitializeKycUseCase {
         existingKyc.userType = userType;
         existingKyc.emailVerified = emailVerified;
         existingKyc.updatedAt = new Date();
+        
+        // Reset tier and status when switching user types to ensure proper verification flow
+        existingKyc.currentTier = KycTier.SPROUT;
+        existingKyc.status = KycStatus.PENDING;
+        
+        // Clear all verification data when switching user types to ensure clean slate
+        existingKyc.bvnData = undefined;
+        existingKyc.documents = [];
+        existingKyc.businessDocuments = [];
+        existingKyc.selfie = undefined;
+        existingKyc.businessDetails = undefined;
+        existingKyc.rejectionReason = undefined;
         
         const updatedKyc = await this.kycRepository.update(existingKyc);
         
@@ -63,9 +80,12 @@ export class InitializeKycUseCase {
         };
       } else {
         // KYC already exists with same user type
+        console.log(`KYC already exists for user ${userId} with same type ${userType}`);
         throw new BadRequestException('KYC already initialized for this user with the same type');
       }
     }
+
+    console.log(`Creating new KYC for user ${userId} with type ${userType}`);
 
     // Get user details to check email verification status
     let emailVerified = false;
@@ -77,7 +97,8 @@ export class InitializeKycUseCase {
       console.warn('Could not verify user email status:', error.message);
     }
 
-    // Create new KYC entity
+    
+    // Create new KYC entity with clean slate
     const kycEntity = new KycEntity(
       '', // Will be set by repository
       userId,
@@ -85,17 +106,24 @@ export class InitializeKycUseCase {
       KycTier.SPROUT,
       KycStatus.PENDING,
       emailVerified, // Use actual email verification status from user
-      [],
+      [], // Empty documents array
       {
         dailyWithdrawal: 1000000,  // ₦1M daily withdrawal
         maxWalletBalance: 5000000,  // ₦5M max wallet balance
       },
       new Date(),
       new Date(),
+      undefined, // No BVN data
+      [], // Empty business documents
+      undefined, // No selfie
+      undefined, // No business details
+      undefined, // No rejection reason
     );
 
     // Save KYC record
+    console.log(`Creating new KYC entity:`, JSON.stringify(kycEntity, null, 2));
     const savedKyc = await this.kycRepository.create(kycEntity);
+    console.log(`Saved KYC entity:`, JSON.stringify(savedKyc, null, 2));
 
     // Get requirements based on user type
     const requirements = this.getRequirementsForUserType(userType);

@@ -49,6 +49,15 @@ export enum NotificationType {
   LIMITED_TIME_BONUS = 'limited_time_bonus',
   PARTNER_OFFER = 'partner_offer',
   REFERRAL_REWARDS = 'referral_rewards',
+
+  // Vehicle & Document Notifications 🚗
+  VEHICLE_APPROVED = 'vehicle_approved',
+  VEHICLE_REJECTED = 'vehicle_rejected',
+  VEHICLE_UNDER_REVIEW = 'vehicle_under_review',
+  VEHICLE_STATUS_CHANGED = 'vehicle_status_changed',
+  DOCUMENT_VERIFIED = 'document_verified',
+  DOCUMENT_REJECTED = 'document_rejected',
+  DOCUMENT_UPLOAD_REQUIRED = 'document_upload_required',
 }
 
 export enum NotificationCategory {
@@ -60,6 +69,7 @@ export enum NotificationCategory {
   IMPACT = 'impact',
   SYSTEM = 'system',
   MARKETING = 'marketing',
+  VEHICLE = 'vehicle',
 }
 
 export enum NotificationPriority {

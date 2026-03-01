@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CoreConfigModule } from './core/config/config.module';
 import { DatabaseModule } from './core/database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -12,7 +13,18 @@ import { RewardsModule } from './modules/rewards/rewards.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { UsersModule } from './modules/users/users.module';
 import { KycModule } from './modules/kyc/kyc.module';
+import { RiskModule } from './modules/risk/risk.module';
+import { ServiceRadiusModule } from './modules/service-radius/service-radius.module';
+import { AgentAvailabilityModule } from './modules/agent-availability/agent-availability.module';
+import { VehicleDetailsModule } from './modules/vehicle-details/vehicle-details.module';
+import { PickupModule } from './modules/pickup/pickup.module';
+import { RedisModule } from './shared/redis/redis.module';
+import { FcmModule } from './shared/fcm/fcm.module';
+import { LocationCleanupService } from './shared/services/location-cleanup.service';
+import { LocationTrackingService } from './shared/services/location-tracking.service';
+import { NotificationModule } from './shared/notifications/notification.module';
 import { RequestLoggingMiddleware } from './shared/middleware/request-logging.middleware';
+import { PlatformDetectionMiddleware } from './shared/middleware/platform-detection.middleware';
 
 @Module({
   imports: [
@@ -30,6 +42,10 @@ import { RequestLoggingMiddleware } from './shared/middleware/request-logging.mi
         },
       }),
     }),
+    ScheduleModule.forRoot(),
+    RedisModule,
+    FcmModule,
+    NotificationModule,
     CoreConfigModule,
     DatabaseModule,
     AuthModule,
@@ -41,12 +57,21 @@ import { RequestLoggingMiddleware } from './shared/middleware/request-logging.mi
     ActivityModule,
     UsersModule,
     KycModule,
+    RiskModule,
+    ServiceRadiusModule,
+    AgentAvailabilityModule,
+    VehicleDetailsModule,
+    PickupModule,
+  ],
+  providers: [
+    LocationTrackingService,
+    LocationCleanupService,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(RequestLoggingMiddleware)
+      .apply(PlatformDetectionMiddleware, RequestLoggingMiddleware)
       .forRoutes('*');
   }
 }

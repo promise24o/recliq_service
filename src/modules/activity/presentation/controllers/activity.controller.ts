@@ -19,8 +19,8 @@ import { Roles } from '../../../auth/infrastructure/decorators/roles.decorator';
 import { UserRole } from '../../../auth/domain/constants/user.constants';
 import { GetActivityLogsUseCase } from '../../application/use-cases/get-activity-logs.usecase';
 import { GetActivitySummaryUseCase } from '../../application/use-cases/get-activity-summary.usecase';
-import { GetSecuritySignalsUseCase } from '../../application/use-cases/get-security-signals.usecase';
-import { AcknowledgeSecuritySignalUseCase } from '../../application/use-cases/acknowledge-security-signal.usecase';
+// import { GetSecuritySignalsUseCase } from '../../application/use-cases/get-security-signals.usecase';
+// import { AcknowledgeSecuritySignalUseCase } from '../../application/use-cases/acknowledge-security-signal.usecase';
 import { ActivityFilterDto } from '../dto/activity-filter.dto';
 import { SecuritySignalFilterDto } from '../dto/security-signal-filter.dto';
 
@@ -31,8 +31,8 @@ export class ActivityController {
   constructor(
     private readonly getActivityLogsUseCase: GetActivityLogsUseCase,
     private readonly getActivitySummaryUseCase: GetActivitySummaryUseCase,
-    private readonly getSecuritySignalsUseCase: GetSecuritySignalsUseCase,
-    private readonly acknowledgeSecuritySignalUseCase: AcknowledgeSecuritySignalUseCase,
+    // private readonly getSecuritySignalsUseCase: GetSecuritySignalsUseCase,
+    // private readonly acknowledgeSecuritySignalUseCase: AcknowledgeSecuritySignalUseCase,
   ) {}
 
   @Get('logs')
@@ -65,34 +65,34 @@ export class ActivityController {
     return this.getActivitySummaryUseCase.execute(req.user.id);
   }
 
-  @Get('security-signals')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get security signals for the current user' })
-  @ApiResponse({ status: 200, description: 'Security signals retrieved successfully' })
-  @ApiQuery({ name: 'includeAcknowledged', required: false, type: Boolean })
-  async getSecuritySignals(
-    @Query() filterDto: SecuritySignalFilterDto,
-    @Query('includeAcknowledged', new DefaultValuePipe(false)) includeAcknowledged: boolean,
-    @Req() req: any,
-  ) {
-    // If no userId is specified and user is not super admin, force their own userId
-    if (!filterDto.userId && req.user.role !== UserRole.SUPER_ADMIN) {
-      filterDto.userId = req.user.id;
-    }
+  // @Get('security-signals')
+// @Roles(UserRole.ADMIN)
+// @ApiOperation({ summary: 'Get security signals for the current user' })
+// @ApiResponse({ status: 200, description: 'Security signals retrieved successfully' })
+// @ApiQuery({ name: 'includeAcknowledged', required: false, type: Boolean })
+// async getSecuritySignals(
+//   @Query() filterDto: SecuritySignalFilterDto,
+//   @Query('includeAcknowledged', new DefaultValuePipe(false)) includeAcknowledged: boolean,
+//   @Req() req: any,
+// ) {
+//   // If no userId is specified and user is not super admin, force their own userId
+//   if (!filterDto.userId && req.user.role !== UserRole.SUPER_ADMIN) {
+//     filterDto.userId = req.user.id;
+//   }
 
-    // filterDto already has the correct types that match SecuritySignalFilter
-    // since we updated SecuritySignalFilter to accept string | Date
-    return this.getSecuritySignalsUseCase.execute(filterDto, includeAcknowledged);
-  }
+//   // filterDto already has the correct types that match SecuritySignalFilter
+//   // since we updated SecuritySignalFilter to accept string | Date
+//   return this.getSecuritySignalsUseCase.execute(filterDto, includeAcknowledged);
+// }
 
-  @Post('security-signals/:id/acknowledge')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Acknowledge a security signal' })
-  @ApiResponse({ status: 200, description: 'Security signal acknowledged successfully' })
-  @ApiResponse({ status: 404, description: 'Security signal not found' })
-  async acknowledgeSecuritySignal(@Param('id') id: string) {
-    return this.acknowledgeSecuritySignalUseCase.execute(id);
-  }
+// @Post('security-signals/:id/acknowledge')
+// @Roles(UserRole.ADMIN)
+// @ApiOperation({ summary: 'Acknowledge a security signal' })
+// @ApiResponse({ status: 200, description: 'Security signal acknowledged successfully' })
+// @ApiResponse({ status: 404, description: 'Security signal not found' })
+// async acknowledgeSecuritySignal(@Param('id') id: string) {
+//   return this.acknowledgeSecuritySignalUseCase.execute(id);
+// }
 
   @Get('export')
   @Roles(UserRole.ADMIN)

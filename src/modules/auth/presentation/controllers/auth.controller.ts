@@ -15,6 +15,8 @@ import { ChangePasswordUseCase } from '../../application/use-cases/change-passwo
 import { UpdatePinUseCase } from '../../application/use-cases/update-pin.usecase';
 import { ForgotPinUseCase } from '../../application/use-cases/forgot-pin.usecase';
 import { SendPinResetOtpUseCase } from '../../application/use-cases/send-pin-reset-otp.usecase';
+import { ManageFcmTokenUseCase } from '../../application/use-cases/manage-fcm-token.usecase';
+import { NotificationService } from '../../../../shared/services/notification.service';
 import { BackblazeService } from '../../infrastructure/storage/backblaze.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -28,6 +30,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { UploadPhotoDto } from '../dto/upload-photo.dto';
+import { RegisterFcmTokenDto, UnregisterFcmTokenDto, SendNotificationDto } from '../dto/fcm-token.dto';
 import { UpdatePinDto } from '../dto/update-pin.dto';
 import { ForgotPinDto } from '../dto/forgot-pin.dto';
 import { SendPinResetOtpDto } from '../dto/send-pin-reset-otp.dto';
@@ -36,7 +39,9 @@ import { RolesGuard } from '../../../../shared/guards/roles.guard';
 import { Roles } from '../../../../shared/guards/roles.decorator';
 import { UserRole } from '../../../../shared/constants/roles';
 import { AuthThrottleGuard } from '../../../../shared/guards/throttle.guard';
-import { RegisterThrottle, LoginThrottle, OtpThrottle, RefreshThrottle } from '../../../../shared/decorators/auth-throttle.decorator';
+import { RegisterThrottle, LoginThrottle, OtpThrottle, RefreshThrottle, StrictLoginThrottle, ForgotPasswordThrottle } from '../../../../shared/decorators/auth-throttle.decorator';
+import { PlatformRolesGuard } from '../../../../shared/guards/platform-roles.guard';
+import { UserAgentPlatform, AdminOnlyPlatform } from '../../../../shared/decorators/platform-roles.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -57,6 +62,8 @@ export class AuthController {
     private readonly updatePinUseCase: UpdatePinUseCase,
     private readonly forgotPinUseCase: ForgotPinUseCase,
     private readonly sendPinResetOtpUseCase: SendPinResetOtpUseCase,
+    private readonly manageFcmTokenUseCase: ManageFcmTokenUseCase,
+    private readonly notificationService: NotificationService,
     private readonly backblazeService: BackblazeService,
   ) {}
 
@@ -71,7 +78,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @LoginThrottle()
+  @StrictLoginThrottle()
   @ApiOperation({ summary: 'Login with phone or email and password' })
   @ApiResponse({ 
     status: 201, 
@@ -87,8 +94,8 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Bad request - invalid credentials' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid password' })
   @ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
-  async login(@Body() dto: LoginDto) {
-    return this.loginUseCase.execute(dto);
+  async login(@Body() dto: LoginDto, @Request() req) {
+    return this.loginUseCase.execute(dto, req);
   }
 
   @Post('verify-otp')
@@ -160,7 +167,7 @@ export class AuthController {
   }
 
   @Post('resend-otp')
-  @OtpThrottle()
+  @StrictLoginThrottle()
   @ApiOperation({ summary: 'Resend OTP to existing user' })
   @ApiResponse({ status: 200, description: 'OTP sent to your email successfully successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - invalid identifier or user already verified' })
@@ -171,7 +178,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @OtpThrottle()
+  @ForgotPasswordThrottle()
   @ApiOperation({ summary: 'Send password reset OTP to email' })
   @ApiResponse({ 
     status: 200, 
@@ -492,5 +499,58 @@ export class AuthController {
     }
     
     return profileData;
+  }
+
+  // --- FCM Token Management ---
+
+  @Post('fcm/register')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Register FCM token for push notifications' })
+  @ApiResponse({ status: 200, description: 'FCM token registered successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async registerFcmToken(@Body() dto: RegisterFcmTokenDto, @Request() req) {
+    return this.manageFcmTokenUseCase.registerToken(req.user.id, dto);
+  }
+
+  @Post('fcm/unregister')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Unregister FCM token' })
+  @ApiResponse({ status: 200, description: 'FCM token unregistered successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async unregisterFcmToken(@Body() dto: UnregisterFcmTokenDto, @Request() req) {
+    return this.manageFcmTokenUseCase.unregisterToken(req.user.id, dto);
+  }
+
+  @Get('fcm/tokens')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user FCM tokens' })
+  @ApiResponse({ status: 200, description: 'FCM tokens retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFcmTokens(@Request() req) {
+    const tokens = await this.manageFcmTokenUseCase.getUserTokens(req.user.id);
+    return { tokens };
+  }
+
+  @Post('fcm/send-test')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send test notification to current user' })
+  @ApiResponse({ status: 200, description: 'Test notification sent successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async sendTestNotification(@Body() dto: SendNotificationDto, @Request() req) {
+    return this.notificationService.sendToUser(
+      { userId: req.user.id, deviceType: dto.deviceType },
+      {
+        title: dto.title,
+        body: dto.body,
+        data: dto.data,
+      },
+    );
   }
 }

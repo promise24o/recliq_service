@@ -50,6 +50,25 @@ export class ZoneRepositoryImpl implements IZoneRepository {
     return doc ? this.toEntity(doc) : null;
   }
 
+  async findByCoordinates(lat: number, lng: number): Promise<Zone[]> {
+    const docs = await this.zoneModel.find({ status: 'active' }).exec();
+    const matching = docs.filter(doc => this.isPointInPolygon(lat, lng, doc.boundary.polygon));
+    return matching.map(doc => this.toEntity(doc));
+  }
+
+  private isPointInPolygon(lat: number, lng: number, polygon: Array<{ lat: number; lng: number }>): boolean {
+    if (!polygon || polygon.length < 3) return false;
+    let inside = false;
+    const n = polygon.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+      const intersect = ((yi > lat) !== (yj > lat)) && (lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
   async update(id: string, updates: Partial<Zone>): Promise<Zone> {
     const zone = await this.zoneModel.findByIdAndUpdate(
       id,

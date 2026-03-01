@@ -69,6 +69,7 @@ export class User {
     public otpExpiresAt?: Date,
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
+    public fcmTokens?: { [deviceType: string]: string },
   ) {}
 
   async setOtp(otp: string, expiresAt: Date, otpService?: any) {

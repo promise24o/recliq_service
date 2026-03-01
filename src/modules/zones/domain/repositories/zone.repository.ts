@@ -12,6 +12,7 @@ export interface IZoneRepository {
   }): Promise<Zone[]>;
   findByCity(city: string): Promise<Zone[]>;
   findByNameAndCity(name: string, city: string): Promise<Zone | null>;
+  findByCoordinates(lat: number, lng: number): Promise<Zone[]>;
   update(id: string, updates: Partial<Zone>): Promise<Zone>;
   delete(id: string): Promise<void>;
   

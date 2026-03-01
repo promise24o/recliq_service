@@ -79,7 +79,6 @@ export class WithdrawUseCase {
       // Debit wallet
       wallet.debit(data.amount);
       await this.walletRepository.update(wallet);
-
       // Initiate Paystack transfer
       const paystackResponse = await this.paystackService.initiateTransfer({
         source: 'balance',
