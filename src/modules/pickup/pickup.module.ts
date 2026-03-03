@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { JwtModule } from '@nestjs/jwt';
 import { PickupController } from './presentation/controllers/pickup.controller';
 import { PickupGateway } from './presentation/gateways/pickup.gateway';
+import { WebsocketDebugController } from './presentation/controllers/websocket-debug.controller';
+import { GeocodingModule } from '../../shared/geocoding/geocoding.module';
 import { CreatePickupRequestUseCase } from './application/use-cases/create-pickup-request.usecase';
 import { GetPickupRequestsUseCase } from './application/use-cases/get-pickup-requests.usecase';
 import { GetPickupRequestUseCase } from './application/use-cases/get-pickup-request.usecase';
@@ -18,6 +21,7 @@ import { GetAvailableAgentsUseCase } from './application/use-cases/get-available
 import { AgentRespondToPickupUseCase } from './application/use-cases/agent-respond-pickup.usecase';
 import { PickupRepositoryImpl } from './infrastructure/persistence/pickup.repository.impl';
 import { PickupSchema } from './infrastructure/persistence/pickup.model';
+import { UserSchema } from '../auth/infrastructure/persistence/user.model';
 import { ZoneValidationService } from './application/services/zone-validation.service';
 import { AgentAvailabilityService } from './application/services/agent-availability.service';
 import { AgentMatchingService } from './application/services/agent-matching.service';
@@ -33,14 +37,17 @@ import { RedisModule } from '../../shared/redis/redis.module';
   imports: [
     MongooseModule.forFeature([
       { name: 'Pickup', schema: PickupSchema },
+      { name: 'User', schema: UserSchema },
     ]),
+    JwtModule.register({}),
     ZonesModule,
     AgentAvailabilityModule,
     ServiceRadiusModule,
     AuthModule,
     RedisModule,
+    GeocodingModule,
   ],
-  controllers: [PickupController],
+  controllers: [PickupController, WebsocketDebugController],
   providers: [
     {
       provide: 'IPickupRepository',

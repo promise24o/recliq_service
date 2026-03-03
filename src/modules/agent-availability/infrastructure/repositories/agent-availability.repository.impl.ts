@@ -9,6 +9,8 @@ export class AgentAvailabilityRepository implements IAgentAvailabilityRepository
   constructor(
     @InjectModel('AgentAvailability')
     private readonly availabilityModel: Model<AgentAvailabilityDocument>,
+    @InjectModel('User')
+    private readonly userModel: Model<any>,
   ) {}
 
   async findByUserId(userId: string): Promise<AgentAvailabilityDocument | null> {
@@ -16,8 +18,16 @@ export class AgentAvailabilityRepository implements IAgentAvailabilityRepository
   }
 
   async create(userId: string, data: any): Promise<AgentAvailabilityDocument> {
+    // Fetch user details to get agentId and agentName
+    const user = await this.userModel.findById(userId).select('name email').exec();
+    if (!user) {
+      throw new Error('User not found');
+    }
+
     const availability = new this.availabilityModel({
       userId,
+      agentId: userId,
+      agentName: user.name,
       ...data,
     });
     return availability.save();
@@ -41,11 +51,11 @@ export class AgentAvailabilityRepository implements IAgentAvailabilityRepository
     const updated = await this.availabilityModel.findOneAndUpdate(
       { userId },
       { $set: { isOnline } },
-      { new: true }
+      { new: true, upsert: true }
     ).exec();
     
     if (!updated) {
-      throw new Error('Availability not found');
+      throw new Error('Failed to update availability');
     }
     
     return updated;

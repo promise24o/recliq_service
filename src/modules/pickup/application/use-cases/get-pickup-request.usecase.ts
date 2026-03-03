@@ -16,4 +16,8 @@ export class GetPickupRequestUseCase {
     }
     return pickup;
   }
+
+  async findById(id: string): Promise<PickupRequest> {
+    return this.execute(id);
+  }
 }

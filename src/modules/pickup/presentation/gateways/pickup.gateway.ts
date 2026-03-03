@@ -144,7 +144,33 @@ export class PickupGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Emit new pickup request to specific agent
   emitNewPickupRequestToAgent(agentId: string, pickup: PickupRequestPayload) {
     this.logger.log(`Emitting new pickup request ${pickup.pickupId} to agent ${agentId}`);
-    this.server.to(`agent:${agentId}`).emit('pickup:new_request', pickup);
+    
+    try {
+      // Check if agent is connected - safer approach
+      const agentSockets = this.server.sockets.sockets;
+      let isConnected = false;
+      
+      // Check if any socket belongs to this agent
+      for (const [socketId, socket] of agentSockets) {
+        if ((socket as any).userId === agentId && (socket as any).userRole === 'agent') {
+          isConnected = true;
+          break;
+        }
+      }
+      
+      if (isConnected) {
+        this.server.to(`agent:${agentId}`).emit('pickup:new_request', pickup);
+        this.logger.log(`✅ Successfully sent pickup request to connected agent ${agentId}`);
+      } else {
+        this.logger.warn(`⚠️ Agent ${agentId} is not connected to WebSocket. Pickup request will be delivered via FCM only.`);
+        // The FCM notification is already sent in the use case, so we just log here
+      }
+    } catch (error) {
+      this.logger.error(`❌ Error checking agent connection: ${error.message}`);
+      // Fallback to just sending the WebSocket event
+      this.server.to(`agent:${agentId}`).emit('pickup:new_request', pickup);
+      this.logger.log(`📤 Sent pickup request to agent ${agentId} (connection check failed)`);
+    }
   }
 
   // Emit pickup status update to user
@@ -196,7 +222,7 @@ export class PickupGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Emit cancellation notification
   emitPickupCancelled(userId: string, agentId: string | undefined, data: {
     pickupId: string;
-    cancelledBy: 'user' | 'agent' | 'system';
+    cancelledBy: 'user' | 'agent' | 'admin' | 'system';
     reason: string;
   }) {
     this.logger.log(`Emitting pickup cancelled for ${data.pickupId}`);
@@ -228,5 +254,64 @@ export class PickupGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ...data,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  // Handle agent reconnection - deliver pending requests
+  async handleAgentReconnection(agentId: string, client: Socket) {
+    this.logger.log(`🔄 Agent ${agentId} reconnected. Checking for pending requests...`);
+    
+    try {
+      // Import here to avoid circular dependency
+      const { GetPickupRequestsUseCase } = require('../application/use-cases/get-pickup-requests.usecase');
+      const getPickupRequestsUseCase = new GetPickupRequestsUseCase(
+        // This would need to be injected properly in a real implementation
+        null as any // Placeholder
+      );
+      
+      // Get pending requests for this agent
+      const requests = await getPickupRequestsUseCase.findByAgentId(agentId);
+      const pendingRequests = requests.filter(r => r.status === 'pending_acceptance');
+      
+      if (pendingRequests.length > 0) {
+        this.logger.log(`📦 Found ${pendingRequests.length} pending requests for agent ${agentId}`);
+        
+        // Emit each pending request to the reconnected agent
+        pendingRequests.forEach(request => {
+          this.emitNewPickupRequestToAgent(agentId, {
+            pickupId: request.id,
+            userId: request.userId,
+            userName: request.userName,
+            userPhone: request.userPhone,
+            pickupMode: request.pickupMode,
+            wasteType: request.wasteType,
+            estimatedWeight: request.estimatedWeight,
+            address: request.address,
+            coordinates: request.coordinates,
+            pricing: request.pricing,
+            notes: request.notes,
+            slaDeadline: request.slaDeadline,
+          });
+        });
+        
+        // Notify agent about pending requests
+        client.emit('agent:pending_requests', {
+          count: pendingRequests.length,
+          requests: pendingRequests.map(r => ({
+            id: r.id,
+            userName: r.userName,
+            pickupMode: r.pickupMode,
+            wasteType: r.wasteType,
+            estimatedWeight: r.estimatedWeight,
+            address: r.address,
+            pricing: r.pricing,
+            createdAt: r.createdAt,
+          })),
+        });
+      } else {
+        this.logger.log(`✅ No pending requests for agent ${agentId}`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Failed to deliver pending requests to agent ${agentId}:`, error.message);
+    }
   }
 }

@@ -88,6 +88,21 @@ export class UpdateOnlineStatusDto {
   @ApiProperty({ example: true })
   @IsBoolean()
   isOnline: boolean;
+
+  @ApiProperty({ example: 4.7803, description: 'Current latitude (optional)', required: false })
+  @IsOptional()
+  @IsNumber()
+  lat?: number;
+
+  @ApiProperty({ example: 6.9841, description: 'Current longitude (optional)', required: false })
+  @IsOptional()
+  @IsNumber()
+  lng?: number;
+
+  @ApiProperty({ example: 10, description: 'GPS accuracy in meters (optional)', required: false })
+  @IsOptional()
+  @IsNumber()
+  accuracy?: number;
 }
 
 export class AvailabilityInsightsDto {

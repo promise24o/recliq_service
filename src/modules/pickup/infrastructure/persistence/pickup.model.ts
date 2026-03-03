@@ -1,9 +1,9 @@
 import { Schema, Document, Types } from 'mongoose';
-import { PickupMode, MatchType, WasteType, PickupStatus, MatchingEventType, Coordinates, PickupPricing, MatchingEvent } from '../../domain/types/pickup.types';
+import { PickupMode, MatchType, WasteType, PickupStatus, MatchingEventType, Coordinates, PickupPricing, MatchingEvent, AgentDetails } from '../../domain/types/pickup.types';
 
 export interface PickupDocument extends Document {
   _id: Types.ObjectId;
-  userId: string;
+  userId: Types.ObjectId;
   userName: string;
   userPhone: string;
   city: string;
@@ -14,8 +14,9 @@ export interface PickupDocument extends Document {
   estimatedWeight: number;
   actualWeight?: number;
   status: PickupStatus;
-  assignedAgentId?: string;
+  assignedAgentId?: Types.ObjectId;
   assignedAgentName?: string;
+  assignedAgentDetails?: AgentDetails; // Populated from ref
   slaDeadline: Date;
   pricing: PickupPricing;
   coordinates: Coordinates;
@@ -27,7 +28,7 @@ export interface PickupDocument extends Document {
   completedAt?: Date;
   cancelledAt?: Date;
   cancellationReason?: string;
-  escalatedTo?: string;
+  escalatedTo?: Types.ObjectId;
   escalatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -47,7 +48,7 @@ const MatchingEventSchema = new Schema({
 }, { _id: false });
 
 export const PickupSchema = new Schema<PickupDocument>({
-  userId: { type: String, required: true, index: true },
+  userId: { type: Schema.Types.ObjectId, required: true, index: true, ref: 'User' },
   userName: { type: String, required: true },
   userPhone: { type: String, required: true },
   city: { type: String, required: true, index: true },
@@ -75,7 +76,7 @@ export const PickupSchema = new Schema<PickupDocument>({
     default: 'new',
     index: true,
   },
-  assignedAgentId: { type: String, index: true },
+  assignedAgentId: { type: Schema.Types.ObjectId, index: true, ref: 'User' },
   assignedAgentName: { type: String },
   slaDeadline: { type: Date, required: true },
   pricing: {
@@ -96,7 +97,7 @@ export const PickupSchema = new Schema<PickupDocument>({
   completedAt: { type: Date },
   cancelledAt: { type: Date },
   cancellationReason: { type: String },
-  escalatedTo: { type: String },
+  escalatedTo: { type: Schema.Types.ObjectId, ref: 'User' },
   escalatedAt: { type: Date },
 }, {
   timestamps: true,

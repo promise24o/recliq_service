@@ -27,9 +27,17 @@ export interface MatchingEvent {
   details: string;
 }
 
+export interface AgentDetails {
+  id: string;
+  name: string;
+  email?: string;
+  photo?: string;
+  phoneNumber?: string;
+}
+
 export interface PickupRequest {
   id: string;
-  userId: string;
+  userId: string; // ObjectId as string in domain layer
   userName: string;
   userPhone: string;
   city: string;
@@ -40,8 +48,9 @@ export interface PickupRequest {
   estimatedWeight: number;
   actualWeight?: number;
   status: PickupStatus;
-  assignedAgentId?: string;
+  assignedAgentId?: string; // ObjectId as string in domain layer
   assignedAgentName?: string;
+  assignedAgentDetails?: AgentDetails; // Populated agent details
   slaDeadline: string;
   pricing: PickupPricing;
   coordinates: Coordinates;
@@ -53,7 +62,7 @@ export interface PickupRequest {
   completedAt?: string;
   cancelledAt?: string;
   cancellationReason?: string;
-  escalatedTo?: string;
+  escalatedTo?: string; // ObjectId as string in domain layer
   escalatedAt?: string;
   createdAt: string;
   updatedAt: string;

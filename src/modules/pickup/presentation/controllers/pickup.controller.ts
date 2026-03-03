@@ -25,6 +25,9 @@ import { CancelPickupRequestDto } from '../dto/cancel-pickup-request.dto';
 import { EscalatePickupRequestDto } from '../dto/escalate-pickup-request.dto';
 import { AgentRespondToPickupDto } from '../dto/agent-respond-pickup.dto';
 import { LocationTrackingService } from '../../../../shared/services/location-tracking.service';
+import { ZoneValidationService } from '../../application/services/zone-validation.service';
+import { AgentAvailabilityService } from '../../application/services/agent-availability.service';
+import { PickupGateway } from '../gateways/pickup.gateway';
 
 @ApiTags('pickup')
 @Controller('pickup')
@@ -47,6 +50,9 @@ export class PickupController {
     private readonly getAvailableAgentsUseCase: GetAvailableAgentsUseCase,
     private readonly agentRespondToPickupUseCase: AgentRespondToPickupUseCase,
     private readonly locationTrackingService: LocationTrackingService,
+    private readonly zoneValidationService: ZoneValidationService,
+    private readonly agentAvailabilityService: AgentAvailabilityService,
+    private readonly pickupGateway: PickupGateway,
   ) {}
 
   // --- User Endpoints ---
@@ -160,6 +166,60 @@ export class PickupController {
     });
   }
 
+  @Get('debug/location-check')
+  @Roles(UserRole.USER, UserRole.AGENT, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Debug endpoint to check zone, agents, and live locations' })
+  @ApiQuery({ name: 'lat', required: true, description: 'Latitude', type: Number })
+  @ApiQuery({ name: 'lng', required: true, description: 'Longitude', type: Number })
+  async debugLocationCheck(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+  ) {
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+
+    // 1. Validate zone for the location
+    const zoneValidation = await this.zoneValidationService.validateLocation({
+      lat: userLat,
+      lng: userLng,
+    });
+
+    // 2. Get all live locations from Redis
+    const allLiveLocations = await this.locationTrackingService.getAllLiveLocations();
+
+    // 3. Get detailed agent info if zone is valid
+    let agentDebugList: any[] = [];
+    if (zoneValidation.zoneId) {
+      const debugResult = await this.agentAvailabilityService.getDebugInfo(
+        { lat: userLat, lng: userLng },
+        zoneValidation.zoneId,
+      );
+      agentDebugList = debugResult.agentsInZone;
+    }
+
+    // 4. Get available agents result
+    const availableAgentsResult = await this.getAvailableAgentsUseCase.execute({
+      lat: userLat,
+      lng: userLng,
+    });
+
+    return {
+      userLocation: { lat: userLat, lng: userLng },
+      zoneInfo: {
+        zoneId: zoneValidation.zoneId,
+        city: zoneValidation.city,
+        zone: zoneValidation.zone,
+        serviceable: zoneValidation.serviceable,
+        zonesFound: zoneValidation.zonesFound,
+      },
+      agentDebugInfo: agentDebugList,
+      availableAgents: availableAgentsResult.agents,
+      allLiveLocationsInRedis: allLiveLocations,
+      liveLocationCount: allLiveLocations.length,
+      message: availableAgentsResult.message,
+    };
+  }
+
   // --- Agent Endpoints ---
 
   @Get('agent/requests')
@@ -196,6 +256,91 @@ export class PickupController {
   async getAgentPendingRequests(@Request() req) {
     const requests = await this.getPickupRequestsUseCase.findByAgentId(req.user.id);
     return requests.filter(r => r.status === 'pending_acceptance');
+  }
+
+  @Get('agent/connection-status')
+  @Roles(UserRole.AGENT)
+  @ApiOperation({ summary: 'Check agent WebSocket connection status and get pending requests' })
+  @ApiResponse({
+    status: 200,
+    description: 'Connection status and pending requests retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        isConnected: { type: 'boolean', example: true },
+        socketId: { type: 'string', example: 'ABC123' },
+        connectedAt: { type: 'string', example: '2024-01-15T10:30:00.000Z' },
+        pendingRequests: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              userName: { type: 'string' },
+              pickupMode: { type: 'string' },
+              wasteType: { type: 'string' },
+              estimatedWeight: { type: 'number' },
+              address: { type: 'string' },
+              pricing: {
+                type: 'object',
+                properties: {
+                  totalAmount: { type: 'number' },
+                  currency: { type: 'string' },
+                },
+              },
+              createdAt: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  })
+  async getAgentConnectionStatus(@Request() req) {
+    const agentId = req.user.id;
+    
+    // Get pending requests
+    const allRequests = await this.getPickupRequestsUseCase.findByAgentId(agentId);
+    const pendingRequests = allRequests.filter(r => r.status === 'pending_acceptance');
+    
+    // Check WebSocket connection status - safer approach
+    let isConnected = false;
+    let socketInfo: { socketId: string; connectedAt: string } | null = null;
+    
+    try {
+      const agentSockets = this.pickupGateway['server']?.sockets?.sockets;
+      if (agentSockets) {
+        for (const [socketId, socket] of agentSockets) {
+          if ((socket as any).userId === agentId && (socket as any).userRole === 'agent') {
+            isConnected = true;
+            socketInfo = {
+              socketId,
+              connectedAt: new Date().toISOString(),
+            };
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking WebSocket connection:', error.message);
+    }
+    
+    return {
+      isConnected,
+      socketInfo,
+      pendingRequests: pendingRequests.map(req => ({
+        id: req.id,
+        userName: req.userName,
+        userPhone: req.userPhone,
+        pickupMode: req.pickupMode,
+        wasteType: req.wasteType,
+        estimatedWeight: req.estimatedWeight,
+        address: req.address,
+        coordinates: req.coordinates,
+        pricing: req.pricing,
+        createdAt: req.createdAt,
+        slaDeadline: req.slaDeadline,
+      })),
+    };
   }
 
   @Patch(':id/respond')
@@ -280,22 +425,15 @@ export class PickupController {
       throw new Error('Tracking is only available after agent accepts the pickup');
     }
 
-    // Determine who to track based on pickup mode and requester role
-    // For pickup: user tracks agent
-    // For dropoff: agent tracks user
+    // Determine who to track based on requester role
+    // User tracks agent, Agent tracks user
     let trackableUserId: string;
     
-    if (pickup.pickupMode === 'pickup') {
-      // User should track agent location
-      if (!isUser) {
-        throw new Error('Only the user can track agent location in pickup mode');
-      }
+    if (isUser) {
+      // User tracks agent location
       trackableUserId = pickup.assignedAgentId!;
     } else {
-      // Agent should track user location
-      if (!isAgent) {
-        throw new Error('Only the agent can track user location in dropoff mode');
-      }
+      // Agent tracks user location
       trackableUserId = pickup.userId;
     }
 

@@ -6,6 +6,7 @@ import { CreatePickupRequestDto } from '../../presentation/dto/create-pickup-req
 import { AgentMatchingService } from '../services/agent-matching.service';
 import { NotificationService } from '../../../../shared/services/notification.service';
 import { PickupGateway } from '../../presentation/gateways/pickup.gateway';
+import { GeocodingService } from '../../../../shared/services/geocoding.service';
 
 @Injectable()
 export class CreatePickupRequestUseCase {
@@ -15,6 +16,7 @@ export class CreatePickupRequestUseCase {
     private readonly agentMatchingService: AgentMatchingService,
     private readonly notificationService: NotificationService,
     private readonly pickupGateway: PickupGateway,
+    private readonly geocodingService: GeocodingService,
   ) {}
 
   async execute(dto: CreatePickupRequestDto, userId: string, userName: string, userPhone: string): Promise<PickupRequest> {
@@ -126,13 +128,27 @@ export class CreatePickupRequestUseCase {
 
       // Send FCM notification to agent
       try {
+        let displayAddress = dto.address;
+        
+        // If address is generic, get human-readable address from coordinates
+        if (dto.address === 'Current location' || dto.address === 'current location') {
+          console.log('Attempting to geocode coordinates:', dto.coordinates);
+          try {
+            displayAddress = await this.geocodingService.reverseGeocode(dto.coordinates);
+            console.log('Geocoded address:', displayAddress);
+          } catch (error) {
+            console.error('Failed to get address from coordinates:', error.message);
+            displayAddress = `Location (${dto.coordinates.lat.toFixed(6)}, ${dto.coordinates.lng.toFixed(6)})`;
+          }
+        }
+        
         await this.notificationService.sendNewPickupRequestToAgent(
           assignedAgent.agentId,
           pickup.id,
           userName,
           dto.wasteType,
           dto.estimatedWeight,
-          dto.address,
+          displayAddress,
           pickup.pricing.totalAmount,
         );
       } catch (error) {

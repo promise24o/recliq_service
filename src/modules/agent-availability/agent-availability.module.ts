@@ -10,11 +10,13 @@ import { AgentAvailabilityRepository } from './infrastructure/repositories/agent
 import { AgentAvailabilitySchema } from './infrastructure/persistence/agent-availability.model';
 import { AgentLocationGateway } from './presentation/gateways/agent-location.gateway';
 import { LocationTrackingService } from '../../shared/services/location-tracking.service';
+import { UserSchema } from '../auth/infrastructure/persistence/user.model';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: 'AgentAvailability', schema: AgentAvailabilitySchema }
+      { name: 'AgentAvailability', schema: AgentAvailabilitySchema },
+      { name: 'User', schema: UserSchema }
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-access-secret',

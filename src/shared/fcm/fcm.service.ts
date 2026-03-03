@@ -164,10 +164,14 @@ export class FcmService {
       // Send to each token individually
       const promises = tokens.map(async (token) => {
         try {
-          await admin.messaging(this.fcmApp).send({
-            ...message,
-            token,
-          });
+          const singleMessage: admin.messaging.Message = {
+            notification: message.notification,
+            data: message.data,
+            android: message.android,
+            apns: message.apns,
+            token: token,
+          };
+          await admin.messaging(this.fcmApp).send(singleMessage);
           return { success: true, token };
         } catch (error) {
           return { success: false, token, error };
@@ -178,6 +182,14 @@ export class FcmService {
       
       const successCount = results.filter(r => r.success).length;
       const failureCount = results.filter(r => !r.success).length;
+      
+      // Log detailed errors for debugging
+      results.forEach(r => {
+        if (!r.success) {
+          this.logger.error(`FCM failed for token ${r.token}: ${r.error?.message || r.error}`);
+        }
+      });
+      
       const failedTokens = results
         .filter(r => !r.success && 
           (r.error?.code === 'messaging/registration-token-not-registered' ||

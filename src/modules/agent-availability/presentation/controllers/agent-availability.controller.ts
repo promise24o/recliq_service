@@ -55,7 +55,7 @@ export class AgentAvailabilityController {
 
   @Patch('online-status')
   @Roles(UserRole.USER, UserRole.AGENT)
-  @ApiOperation({ summary: 'Update agent online status' })
+  @ApiOperation({ summary: 'Update agent online status (optionally with location)' })
   @ApiResponse({
     status: 200,
     description: 'Online status updated successfully',
@@ -64,15 +64,27 @@ export class AgentAvailabilityController {
   async updateOnlineStatus(
     @Request() req,
     @Body() dto: UpdateOnlineStatusDto,
-  ): Promise<{ isOnline: boolean }> {
+  ): Promise<{ isOnline: boolean; locationUpdated?: boolean }> {
     const result = await this.updateOnlineStatusUseCase.execute(req.user.id, dto.isOnline);
 
     // When agent goes offline, remove from Redis live tracking
     if (!dto.isOnline) {
       await this.locationTrackingService.removeAgentLocation(req.user.id);
+      return result;
     }
 
-    return result;
+    // When agent goes online with location, store in Redis immediately
+    let locationUpdated = false;
+    if (dto.isOnline && dto.lat !== undefined && dto.lng !== undefined) {
+      locationUpdated = await this.locationTrackingService.updateAgentLocation(
+        req.user.id,
+        dto.lat,
+        dto.lng,
+        dto.accuracy,
+      );
+    }
+
+    return { ...result, locationUpdated };
   }
 
   @Post('location')

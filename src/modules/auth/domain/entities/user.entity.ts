@@ -70,6 +70,12 @@ export class User {
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
     public fcmTokens?: { [deviceType: string]: string },
+    public cancellationStats?: {
+      totalCancellations: number;
+      cancellationsThisMonth: number;
+      lastCancellationAt?: Date;
+      cancellationReasons: string[];
+    },
   ) {}
 
   async setOtp(otp: string, expiresAt: Date, otpService?: any) {

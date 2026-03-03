@@ -1,26 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { PickupDocument } from './pickup.model';
 import { PickupRequest, PickupRequestSummary, FunnelStage, FailureAnalysis, PickupFilters, PaginatedResult, MatchingEvent } from '../../domain/types/pickup.types';
 import { IPickupRepository } from '../../domain/repositories/pickup.repository';
+import { GeocodingService } from '../../../../shared/services/geocoding.service';
 
 @Injectable()
 export class PickupRepositoryImpl implements IPickupRepository {
   constructor(
     @InjectModel('Pickup')
     private readonly pickupModel: Model<PickupDocument>,
+    private readonly geocodingService: GeocodingService,
   ) {}
 
   async create(pickupData: Omit<PickupRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<PickupRequest> {
     const pickup = new this.pickupModel(pickupData);
     const saved = await pickup.save();
-    return this.toEntity(saved);
+    return await this.toEntity(saved);
   }
 
   async findById(id: string): Promise<PickupRequest | null> {
     const doc = await this.pickupModel.findById(id);
-    return doc ? this.toEntity(doc) : null;
+    return doc ? await this.toEntity(doc) : null;
   }
 
   async findAll(filters: PickupFilters): Promise<PaginatedResult<PickupRequest>> {
@@ -80,7 +82,7 @@ export class PickupRepositoryImpl implements IPickupRepository {
     ]);
 
     return {
-      data: docs.map(doc => this.toEntity(doc)),
+      data: await Promise.all(docs.map(doc => this.toEntity(doc))),
       total,
       page,
       limit,
@@ -89,29 +91,21 @@ export class PickupRepositoryImpl implements IPickupRepository {
   }
 
   async findByUserId(userId: string): Promise<PickupRequest[]> {
-    const docs = await this.pickupModel.find({ userId }).sort({ createdAt: -1 });
-    return docs.map(doc => this.toEntity(doc));
+    const docs = await this.pickupModel
+      .find({ userId })
+      .populate('assignedAgentId', 'name email profilePhoto phone')
+      .sort({ createdAt: -1 });
+    return await Promise.all(docs.map(doc => this.toEntity(doc)));
   }
 
   async findByAgentId(agentId: string): Promise<PickupRequest[]> {
     const docs = await this.pickupModel.find({ assignedAgentId: agentId }).sort({ createdAt: -1 });
-    return docs.map(doc => this.toEntity(doc));
+    return await Promise.all(docs.map(doc => this.toEntity(doc)));
   }
 
   async update(id: string, updates: Partial<PickupRequest>): Promise<PickupRequest> {
-    const doc = await this.pickupModel.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true },
-    );
-    if (!doc) {
-      throw new Error('Pickup request not found');
-    }
-    return this.toEntity(doc);
-  }
-
-  async updateStatus(id: string, status: string, additionalData?: Partial<PickupRequest>): Promise<PickupRequest> {
-    const updateData: any = { status, ...additionalData };
+    const updateData: any = { ...updates };
+    
     const doc = await this.pickupModel.findByIdAndUpdate(
       id,
       { $set: updateData },
@@ -120,7 +114,21 @@ export class PickupRepositoryImpl implements IPickupRepository {
     if (!doc) {
       throw new Error('Pickup request not found');
     }
-    return this.toEntity(doc);
+    return await this.toEntity(doc);
+  }
+
+  async updateStatus(id: string, status: string, additionalData?: Partial<PickupRequest>): Promise<PickupRequest> {
+    const updateData: any = { status, ...additionalData };
+    
+    const doc = await this.pickupModel.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true },
+    );
+    if (!doc) {
+      throw new Error('Pickup request not found');
+    }
+    return await this.toEntity(doc);
   }
 
   async addMatchingEvent(id: string, event: MatchingEvent): Promise<PickupRequest> {
@@ -132,7 +140,7 @@ export class PickupRepositoryImpl implements IPickupRepository {
     if (!doc) {
       throw new Error('Pickup request not found');
     }
-    return this.toEntity(doc);
+    return await this.toEntity(doc);
   }
 
   async delete(id: string): Promise<void> {
@@ -317,15 +325,15 @@ export class PickupRepositoryImpl implements IPickupRepository {
       status: { $in: ['new', 'matching', 'assigned', 'agent_en_route'] },
       slaDeadline: { $lte: threshold },
     }).sort({ slaDeadline: 1 });
-    return docs.map(doc => this.toEntity(doc));
+    return await Promise.all(docs.map(doc => this.toEntity(doc)));
   }
 
   async findActiveByAgentId(agentId: string): Promise<PickupRequest | null> {
     const doc = await this.pickupModel.findOne({
       assignedAgentId: agentId,
-      status: { $in: ['assigned', 'agent_en_route', 'arrived'] },
+      status: { $in: ['pending_acceptance', 'assigned', 'agent_en_route', 'arrived'] },
     });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? await this.toEntity(doc) : null;
   }
 
   private buildTimeQuery(timeRange?: string): any {
@@ -356,10 +364,21 @@ export class PickupRepositoryImpl implements IPickupRepository {
     }
   }
 
-  private toEntity(doc: PickupDocument): PickupRequest {
+  private async toEntity(doc: PickupDocument): Promise<PickupRequest> {
+    // Geocode address if it's "Current location"
+    let displayAddress = doc.address;
+    if (doc.address === 'Current location' || doc.address === 'current location') {
+      try {
+        displayAddress = await this.geocodingService.reverseGeocode(doc.coordinates);
+      } catch (error) {
+        // Keep original address if geocoding fails
+        console.error('Failed to geocode address for pickup:', error.message);
+      }
+    }
+
     return {
       id: doc._id.toString(),
-      userId: doc.userId,
+      userId: doc.userId.toString(),
       userName: doc.userName,
       userPhone: doc.userPhone,
       city: doc.city,
@@ -370,12 +389,19 @@ export class PickupRepositoryImpl implements IPickupRepository {
       estimatedWeight: doc.estimatedWeight,
       actualWeight: doc.actualWeight,
       status: doc.status,
-      assignedAgentId: doc.assignedAgentId,
+      assignedAgentId: doc.assignedAgentId?.toString(),
       assignedAgentName: doc.assignedAgentName,
+      assignedAgentDetails: doc.assignedAgentDetails ? {
+        id: doc.assignedAgentId?.toString() || '',
+        name: doc.assignedAgentDetails.name,
+        email: doc.assignedAgentDetails.email,
+        photo: doc.assignedAgentDetails.photo,
+        phoneNumber: doc.assignedAgentDetails.phoneNumber,
+      } : undefined,
       slaDeadline: doc.slaDeadline?.toISOString(),
       pricing: doc.pricing,
       coordinates: doc.coordinates,
-      address: doc.address,
+      address: displayAddress,
       notes: doc.notes,
       matchingTimeline: doc.matchingTimeline || [],
       failureReason: doc.failureReason,
@@ -383,7 +409,7 @@ export class PickupRepositoryImpl implements IPickupRepository {
       completedAt: doc.completedAt?.toISOString(),
       cancelledAt: doc.cancelledAt?.toISOString(),
       cancellationReason: doc.cancellationReason,
-      escalatedTo: doc.escalatedTo,
+      escalatedTo: doc.escalatedTo?.toString(),
       escalatedAt: doc.escalatedAt?.toISOString(),
       createdAt: doc.createdAt?.toISOString(),
       updatedAt: doc.updatedAt?.toISOString(),

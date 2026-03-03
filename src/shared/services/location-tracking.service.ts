@@ -176,6 +176,33 @@ export class LocationTrackingService {
     }
   }
 
+  async getAllLiveLocations(): Promise<{ agentId: string; lat: number; lng: number; lastSeen: string | null; isStale: boolean }[]> {
+    try {
+      const allAgents = await this.redis.zrange(this.GEO_KEY, 0, -1);
+      const results: { agentId: string; lat: number; lng: number; lastSeen: string | null; isStale: boolean }[] = [];
+
+      for (const agentId of allAgents) {
+        const pos = await this.redis.geopos(this.GEO_KEY, agentId);
+        const lastSeen = await this.redis.get(`${this.LAST_SEEN_PREFIX}${agentId}`);
+        
+        if (pos && pos[0]) {
+          results.push({
+            agentId,
+            lng: parseFloat(pos[0][0] as string),
+            lat: parseFloat(pos[0][1] as string),
+            lastSeen: lastSeen ? new Date(parseInt(lastSeen)).toISOString() : null,
+            isStale: !lastSeen,
+          });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      this.logger.error('Failed to get all live locations:', error.message);
+      return [];
+    }
+  }
+
   async removeStaleAgents(): Promise<number> {
     try {
       // Get all agents in the geo set
@@ -200,6 +227,64 @@ export class LocationTrackingService {
     } catch (error) {
       this.logger.error('Failed to remove stale agents:', error.message);
       return 0;
+    }
+  }
+
+  async getTrackingData(pickupId: string, userId: string, userRole: string, getPickupUseCase?: any): Promise<any> {
+    try {
+      // Get pickup details to find the agent
+      if (!getPickupUseCase) {
+        throw new Error('Pickup service not available');
+      }
+      
+      const pickup = await getPickupUseCase.findById(pickupId);
+      
+      if (!pickup) {
+        throw new Error('Pickup not found');
+      }
+
+      // Check if user has permission to track
+      if (userRole === 'user' && pickup.userId !== userId) {
+        throw new Error('Unauthorized: User can only track their own pickups');
+      }
+      
+      if (userRole === 'agent' && pickup.assignedAgentId !== userId) {
+        throw new Error('Unauthorized: Agent can only track assigned pickups');
+      }
+
+      // Get agent location
+      if (!pickup.assignedAgentId) {
+        throw new Error('No agent assigned to this pickup');
+      }
+
+      const agentLocation = await this.getAgentLocation(pickup.assignedAgentId);
+      
+      if (!agentLocation) {
+        return {
+          pickupId,
+          agentId: pickup.assignedAgentId,
+          status: 'offline',
+          message: 'Agent is currently offline or location not available',
+          lastKnownLocation: null,
+        };
+      }
+
+      return {
+        pickupId,
+        agentId: pickup.assignedAgentId,
+        agentName: pickup.assignedAgentName,
+        status: 'online',
+        location: {
+          latitude: agentLocation.latitude,
+          longitude: agentLocation.longitude,
+        },
+        lastUpdated: new Date().toISOString(),
+        pickupStatus: pickup.status,
+        pickupMode: pickup.pickupMode,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get tracking data for pickup ${pickupId}:`, error.message);
+      throw error;
     }
   }
 
